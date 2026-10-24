@@ -323,9 +323,13 @@ def child_info(cfg: dict, age_id: str, today: date) -> dict:
 
 def dial(items, day, feeds, nm, mode) -> dict:
     wake, bed = items[0]["start"], items[-1]["start"]
+    bed_real = items[-1]["type"] == "bed" and items[-1]["real"]
+    # Coucher prévu dépassé sans être noté : le cadran s'étire jusqu'à maintenant,
+    # pour que le point « maintenant » et les derniers biberons restent visibles
+    end = max(bed, nm + 10, *[f["t"] + 10 for f in feeds if f["t"] is not None]) if not bed_real and mode == "day" and nm >= 0 else bed
     return {
-        "wake": wake, "bed": bed, "now": nm, "night": mode == "night",
-        "wake_real": items[0]["real"], "bed_real": items[-1]["type"] == "bed" and items[-1]["real"],
+        "wake": wake, "bed": end, "now": nm, "night": mode == "night",
+        "wake_real": items[0]["real"], "bed_real": bed_real,
         "wake_label": E.fmt(wake), "bed_label": E.fmt(bed),
         "naps": [{"idx": x["idx"], "start": x["start"], "end": x["end"], "start_real": x["start_real"], "end_real": x["end_real"],
                   "label": E.fmt(x["start"])} for x in items if x["type"] == "nap"],

@@ -226,3 +226,13 @@ def test_ancien_nom_d_en_tete_accepte_si_configure(client, auth, monkeypatch):
     assert client.get("/api/quick/status", headers={"X-Ancienne-Key": key}).status_code == 401
     monkeypatch.setattr(A, "EXTRA_KEY_HEADER", "X-Ancienne-Key")
     assert client.get("/api/quick/status", headers={"X-Ancienne-Key": key}).status_code == 200
+
+
+def test_cadran_apres_l_heure_du_coucher_prevu(client, auth, clock):
+    clock.set("2026-10-24 07:00")
+    act(client, auth, "wake")
+    clock.set("2026-10-24 22:00")
+    t = act(client, auth, "feed").json()["today"]
+    d = t["dial"]
+    # coucher prévu largement dépassé : le biberon de 22:00 et « maintenant » restent sur le cadran
+    assert d["bed"] >= 22 * 60 and any(f["t"] == 22 * 60 for f in d["feeds"]) and d["bed_label"] != "22:10"
