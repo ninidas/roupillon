@@ -82,10 +82,9 @@ h1{font-family:var(--round);font-size:34px;font-weight:800;letter-spacing:-.02em
 .ring{stroke:var(--ring)} .ring-past{stroke:var(--ring-past);stroke-dasharray:900;animation:draw 1s cubic-bezier(.3,.7,.2,1) both}
 .pill path{fill:none;stroke-linecap:round}
 .pill-halo{stroke:var(--halo)}
-.pill.real .pill-edge{stroke:var(--pill-edge)}
-.pill.real .pill-fill{stroke:var(--pill-fill)}
-.pill.plan .pill-edge{stroke:var(--pill-edge);opacity:.45;stroke-dasharray:2 5}
-.pill.plan .pill-fill{stroke:var(--ring)}
+.pill-shape{stroke-width:1.5px}
+.pill.real .pill-shape{fill:var(--pill-fill);stroke:var(--pill-edge)}
+.pill.plan .pill-shape{fill:var(--ring);stroke:var(--pill-edge);stroke-opacity:.6;stroke-dasharray:3 4}
 .glyph{fill:var(--glyph)} .glyph-plan{fill:var(--pill-edge);opacity:.6}
 .feed-dot{fill:var(--feed);opacity:.8}
 .mk-in{animation:mkin .45s ease-out both}

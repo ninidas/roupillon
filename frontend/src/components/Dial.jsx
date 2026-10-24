@@ -35,16 +35,30 @@ const BedIcon = () => (
   </g>
 )
 
-// Une gélule de a0 à a1 (degrés) : bords arrondis compris, elle ne déborde pas de la durée réelle
+// Contour d'une gélule posée dans l'anneau, de l'angle s à l'angle e : un vrai tracé fermé
+// (bord extérieur, bout arrondi, bord intérieur, bout arrondi), pour un liseré net, plein ou en pointillés.
+function capsule(s, e, h) {
+  const big = e - s > 180 ? 1 : 0
+  const [x1, y1] = pol(R + h, s), [x2, y2] = pol(R + h, e), [x3, y3] = pol(R - h, e), [x4, y4] = pol(R - h, s)
+  const f = (v) => v.toFixed(2)
+  return `M${f(x1)} ${f(y1)}A${R + h} ${R + h} 0 ${big} 1 ${f(x2)} ${f(y2)}A${h} ${h} 0 0 1 ${f(x3)} ${f(y3)}` +
+    `A${R - h} ${R - h} 0 ${big} 0 ${f(x4)} ${f(y4)}A${h} ${h} 0 0 1 ${f(x1)} ${f(y1)}Z`
+}
+
+// Une gélule de a0 à a1 (degrés) : bouts arrondis compris, elle ne déborde pas de la durée réelle ;
+// une sieste très courte devient un rond. Le liseré est tracé juste à l'intérieur de l'anneau.
 function Pill({ a0, a1, cls }) {
   const mid = (a0 + a1) / 2
   const long = a1 - a0 > 2 * CAP
-  const d = arc(R, long ? a0 + CAP : mid, long ? a1 - CAP : mid)
+  const s = long ? a0 + CAP : mid, e = long ? a1 - CAP : mid
+  const h = W / 2 - 0.75
+  const [cx, cy] = pol(R, mid)
   return (
     <g className={`pill ${cls}`}>
-      {cls === 'real' && <path d={d} className="pill-halo" strokeWidth={W + 6} filter="url(#glow)" />}
-      <path d={d} className="pill-edge" strokeWidth={W} />
-      <path d={d} className="pill-fill" strokeWidth={W - 3} />
+      {cls === 'real' && <path d={arc(R, s, e)} className="pill-halo" strokeWidth={W + 6} filter="url(#glow)" />}
+      {long
+        ? <path d={capsule(s, e, h)} className="pill-shape" />
+        : <circle cx={cx.toFixed(2)} cy={cy.toFixed(2)} r={h} className="pill-shape" />}
     </g>
   )
 }
