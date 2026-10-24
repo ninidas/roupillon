@@ -241,6 +241,22 @@ button.cell:active{background:var(--fill)}
 .theme-n .tick svg{width:13px;height:13px}
 .theme-d{width:100%;font-size:13px;line-height:1.35;color:var(--label2)}
 
+/* Roues d'heure, dans la feuille */
+.wheel{position:relative;display:flex;justify-content:center;align-items:center;gap:4px;height:200px;background:var(--card);border-radius:20px;overflow:hidden}
+.wheel-band{position:absolute;left:12px;right:12px;top:80px;height:40px;border-radius:12px;background:var(--fill);pointer-events:none}
+.wheel-col{position:relative;height:200px;width:84px;overflow-y:auto;scroll-snap-type:y mandatory;scrollbar-width:none;overscroll-behavior:contain;
+  -webkit-mask-image:linear-gradient(transparent,#000 32%,#000 68%,transparent);mask-image:linear-gradient(transparent,#000 32%,#000 68%,transparent)}
+.wheel-col::-webkit-scrollbar{display:none}
+.wheel-i{height:40px;line-height:40px;text-align:center;scroll-snap-align:center;font-size:24px;color:var(--label2);font-variant-numeric:tabular-nums;cursor:pointer;transition:color .15s}
+.wheel-i.on{color:var(--label);font-weight:600;font-size:26px}
+.wheel-sep{position:relative;font-size:26px;font-weight:600;color:var(--label);margin-top:-3px}
+.when2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.when2 button{border:0;border-radius:16px;padding:10px 14px;background:var(--card);display:flex;flex-direction:column;align-items:flex-start;gap:2px;cursor:pointer;text-align:left;transition:box-shadow .2s}
+.when2 button span{font-size:13px;color:var(--label2)}
+.when2 button b{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}
+.when2 button[aria-selected="true"]{box-shadow:inset 0 0 0 1.5px var(--pill-edge),0 0 14px var(--halo)}
+.when1{font-size:13px;color:var(--label2);margin:0 4px -8px}
+
 /* Feuille du bas */
 .backdrop{position:fixed;inset:0;z-index:30;background:var(--backdrop);animation:fade .2s ease-out}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:31;max-width:560px;margin:0 auto;background:var(--bg);border-radius:22px 22px 0 0;

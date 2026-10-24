@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from '../api'
 import Sheet, { Confirm } from './Sheet'
+import TimeWheel from './TimeWheel'
 
 const LABELS = {
   nap: { title: 'Sieste', start: 'Endormie à', end: 'Réveillée à' },
@@ -19,12 +20,14 @@ function nowHM() {
 // Saisie ou correction d'un fait de la journée. event : {id, start, end, ml} existant, ou null pour un ajout.
 export default function EventSheet({ kind, day, event, title, defaults = {}, onClose, onDone }) {
   const L = LABELS[kind]
-  const [start, setStart] = useState(event?.start || defaults.start || '')
+  const [start, setStart] = useState(event?.start || defaults.start || nowHM())
   const [end, setEnd] = useState(event?.end || defaults.end || '')
   const [ml, setMl] = useState(event?.ml ?? '')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const span = kind === 'nap' || kind === 'night'
+  const [field, setField] = useState('start')   // l'heure que la roue modifie
+  const pickEnd = () => { if (!end) setEnd(nowHM()); setField('end') }
 
   async function save() {
     if (!start) { setErr("Indiquez l'heure"); return }
@@ -52,20 +55,22 @@ export default function EventSheet({ kind, day, event, title, defaults = {}, onC
   return (
     <Sheet title={title || L.title} onClose={onClose}
       action={<button type="button" className="link" style={{ fontWeight: 600 }} disabled={busy} onClick={save}>OK</button>}>
-      <div className="fields">
-        <label className="field">{L.start}
-          <input type="time" id="ev-start" value={start} onChange={e => setStart(e.target.value)} required />
-        </label>
-        {span && (
-          <label className="field">{L.end}
-            <input type="time" id="ev-end" value={end} onChange={e => setEnd(e.target.value)} />
-          </label>
-        )}
-      </div>
-      {span && !end && (
+      {span ? (
+        // Deux heures : on choisit laquelle la roue règle
+        <div className="when2" role="tablist">
+          <button type="button" role="tab" aria-selected={field === 'start'} onClick={() => setField('start')}>
+            <span>{L.start}</span><b className="rd">{start}</b>
+          </button>
+          <button type="button" role="tab" aria-selected={field === 'end'} onClick={pickEnd}>
+            <span>{L.end}</span><b className="rd">{end || 'en cours'}</b>
+          </button>
+        </div>
+      ) : <div className="when1">{L.start}</div>}
+      <TimeWheel value={field === 'end' && end ? end : start} onChange={field === 'end' ? setEnd : setStart} />
+      {span && field === 'end' && end && (
         <div className="quick indigo">
-          <button type="button" onClick={() => setEnd(nowHM())}>{L.end} maintenant</button>
-          {kind === 'nap' && <span className="sub2" style={{ alignSelf: 'center' }}>Vide : la sieste est en cours</span>}
+          <button type="button" onClick={() => setEnd(nowHM())}>Maintenant</button>
+          <button type="button" onClick={() => { setEnd(''); setField('start') }}>{kind === 'nap' ? 'Laisser en cours' : 'Pas encore'}</button>
         </div>
       )}
       {kind === 'feed' && (

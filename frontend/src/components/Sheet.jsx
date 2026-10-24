@@ -11,7 +11,8 @@ export default function Sheet({ title, onClose, action, children }) {
   }, [onClose])
 
   let y0 = null
-  const start = (e) => { y0 = e.touches[0].clientY }
+  // Un geste commencé sur une roue d'heure fait tourner la roue, il ne ferme pas la feuille
+  const start = (e) => { y0 = e.target.closest('.wheel') ? null : e.touches[0].clientY }
   const move = (e) => { if (y0 != null && e.touches[0].clientY - y0 > 70 && e.currentTarget.scrollTop <= 0) { y0 = null; onClose() } }
 
   return (
