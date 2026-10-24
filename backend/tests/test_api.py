@@ -258,6 +258,24 @@ def test_poids_et_repere_de_lait(client, auth, clock):
     assert w["kg"] == "5,5"
     ref = client.get("/api/today", headers=auth).json()["feed"]["ref"]
     assert (ref["lo"], ref["hi"], ref["kg"]) == (700, 950, "5,5")
-    assert client.get("/api/weights", headers=auth).json()["weights"][0]["id"] == w["id"]
+    assert client.get("/api/growth", headers=auth).json()["weights"][0]["id"] == w["id"]
     client.delete(f"/api/weights/{w['id']}", headers=auth)
     assert client.get("/api/today", headers=auth).json()["feed"]["ref"] is None
+
+
+
+def test_courbe_de_poids(client, auth, clock):
+    from app import engine as E
+    # Valeurs des tables OMS : médiane d'une fille à 3 mois 5,85 kg, 3e percentile 4,6, 97e 7,4
+    assert round(E.who_weight("f", 3 * E.DAYS_PER_MONTH, 0), 2) == 5.85
+    assert round(E.who_weight("f", 3 * E.DAYS_PER_MONTH, -1.881), 1) == 4.6
+    assert round(E.who_weight("f", 3 * E.DAYS_PER_MONTH, 1.881), 1) == 7.4
+    clock.set("2026-10-24 10:00")
+    for day, kg in (("2026-10-02", 5.4), ("2026-10-09", 5.62)):
+        client.post("/api/weights", json={"day": day, "kg": kg}, headers=auth)
+    g = client.get("/api/growth", headers=auth).json()
+    assert g["curves"] is None   # sexe pas encore indiqué
+    assert g["weights"][0]["kg"] == "5,62" and g["weights"][0]["gain"] == "+220 g en 7 jours"
+    client.put("/api/settings", json={"sex": "f"}, headers=auth)
+    g = client.get("/api/growth", headers=auth).json()
+    assert g["curves"]["days"][0] == 0 and g["curves"]["days"][-1] == g["span_days"] and len(g["curves"]["p50"]) == len(g["curves"]["days"])

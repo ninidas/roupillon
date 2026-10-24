@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import EventSheet from '../components/EventSheet'
+import Growth from '../components/Growth'
 import Sheet, { Confirm } from '../components/Sheet'
 import { Bed, Bottle, Chevron, Moon, Plus, Sun } from '../components/Icons'
 
@@ -30,6 +31,8 @@ export default function Journal({ open, close, notify, status, version }) {
             </div>
           </section>
         )}
+
+        <Growth open={open} close={close} notify={notify} version={version} />
 
         <section>
           <h2 className="section-h">Journées</h2>

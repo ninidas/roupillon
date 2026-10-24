@@ -102,6 +102,7 @@ def settings(db: Session) -> dict:
         "child_name": get_setting(db, "child_name", "Bébé"),
         "birth_date": birth,
         "manual_age": get_setting(db, "manual_age"),
+        "sex": get_setting(db, "sex"),
     }
 
 
@@ -118,9 +119,37 @@ def milk_info(db: Session, cfg: dict, d: date) -> dict | None:
     ref = E.milk_ref(w.grams, (d - date.fromisoformat(cfg["birth_date"])).days)
     if not ref:
         return None
-    kg = f"{w.grams / 1000:.2f}".rstrip("0").rstrip(".").replace(".", ",")
-    return ref | {"kg": kg, "weighed": short_label(date.fromisoformat(w.day), d).lower(),
+    return ref | {"kg": kg_text(w.grams), "weighed": short_label(date.fromisoformat(w.day), d).lower(),
                   "label": f"souvent {ref['lo']} à {ref['hi']} ml par jour"}
+
+
+def kg_text(grams: int) -> str:
+    return f"{grams / 1000:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+
+
+def growth(db: Session, today: date) -> dict:
+    """Pesées, gain depuis la précédente, et courbes OMS jusqu'un peu après l'âge actuel."""
+    cfg = settings(db)
+    birth = date.fromisoformat(cfg["birth_date"]) if cfg["birth_date"] else None
+    ws = db.query(models.Weight).order_by(models.Weight.day, models.Weight.id).all()
+    out, prev = [], None
+    for w in ws:
+        d = date.fromisoformat(w.day)
+        gain = None
+        if prev:
+            g, n = w.grams - prev.grams, (d - date.fromisoformat(prev.day)).days
+            gain = f"{'+' if g >= 0 else '−'}{abs(g)} g" + (f" en {E.plural(n, 'jour')}" if n else " le même jour")
+        out.append({"id": w.id, "day": w.day, "label": date_label(d), "kg": kg_text(w.grams), "grams": w.grams,
+                    "age_days": (d - birth).days if birth else None, "gain": gain})
+        prev = w
+    age = (today - birth).days if birth else None
+    span = None
+    if age is not None:
+        last = max([x["age_days"] for x in out if x["age_days"] is not None] or [0])
+        span = min(730, max(183, max(age, last) + 45))
+    curves = E.who_curves(cfg["sex"], span) if cfg["sex"] in E.WHO_WFA and span else None
+    return {"sex": cfg["sex"], "age_days": age, "span_days": span, "weights": out[::-1], "curves": curves,
+            "milk": milk_info(db, cfg, today)}
 
 
 def age_for(cfg: dict, today: date) -> str:

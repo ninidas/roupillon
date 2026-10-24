@@ -311,14 +311,12 @@ class WeightNew(BaseModel):
 
 def weight_out(w: models.Weight) -> dict:
     return {"id": w.id, "day": w.day, "label": S.date_label(date.fromisoformat(w.day)),
-            "kg": f"{w.grams / 1000:.2f}".rstrip("0").rstrip(".").replace(".", ",")}
+            "kg": S.kg_text(w.grams)}
 
 
-@router.get("/weights")
-def list_weights(user: models.User = Depends(current_user), db: Session = Depends(get_db)):
-    ws = db.query(models.Weight).order_by(models.Weight.day.desc(), models.Weight.id.desc()).all()
-    cfg = S.settings(db)
-    return {"weights": [weight_out(w) for w in ws], "milk": S.milk_info(db, cfg, S.now_local().date())}
+@router.get("/growth")
+def get_growth(user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    return S.growth(db, S.now_local().date())
 
 
 @router.post("/weights")
@@ -357,6 +355,7 @@ class SettingsBody(BaseModel):
     child_name: Name | None = None
     birth_date: date | None = None
     manual_age: str | None = None
+    sex: Literal["f", "m"] | None = None
 
 
 @router.put("/settings")
@@ -371,6 +370,8 @@ def put_settings(body: SettingsBody, user: models.User = Depends(current_user), 
         if body.manual_age is not None and body.manual_age not in E.AGE_BY_ID:
             raise HTTPException(status_code=422, detail="Âge inconnu")
         S.set_setting(db, "manual_age", body.manual_age)
+    if "sex" in fields and body.sex:
+        S.set_setting(db, "sex", body.sex)
     db.commit()
     return get_settings(user, db)
 

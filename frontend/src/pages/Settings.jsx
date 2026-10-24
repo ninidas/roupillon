@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, setToken } from '../api'
 import Sheet, { Confirm } from '../components/Sheet'
-import { Check, Chevron, Key, Plus, User } from '../components/Icons'
+import { Check, Chevron, Key, User } from '../components/Icons'
 import widgetTemplate from '../scriptable/roupillon-widget.js?raw'
 
 async function copy(text) {
@@ -73,6 +73,13 @@ export default function Settings({ me, setMe, open, close, notify, onLogout, sta
               <input id="birth" type="date" className="input txt" style={{ maxWidth: 170, minHeight: 40, boxShadow: 'none', background: 'var(--fill)' }}
                 value={birth} onChange={e => { setBirth(e.target.value); if (e.target.value) put({ birth_date: e.target.value }, 'Date enregistrée') }} />
             </label>
+            <div className="cell">
+              <span className="grow ttl">Courbes OMS</span>
+              <div className="seg" role="group" aria-label="Fille ou garçon">
+                <button type="button" aria-pressed={s.sex === 'f'} onClick={() => put({ sex: 'f' }, 'Courbes des filles')}>Fille</button>
+                <button type="button" aria-pressed={s.sex === 'm'} onClick={() => put({ sex: 'm' }, 'Courbes des garçons')}>Garçon</button>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -97,7 +104,6 @@ export default function Settings({ me, setMe, open, close, notify, onLogout, sta
         </section>
       </>}
 
-      <Weights open={open} close={close} notify={notify} />
 
       <section>
         <h2 className="section-h">Widget et Raccourcis</h2>
@@ -175,55 +181,6 @@ function PasswordSheet({ onClose, notify }) {
       <label className="field">Nouveau (12 caractères au moins)<input id="pw-new" type="password" className="input txt" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} /></label>
       {err && <p className="err">{err}</p>}
       <button type="button" className="primary" disabled={!cur || pw.length < 12} onClick={save}>Changer</button>
-    </Sheet>
-  )
-}
-
-// Pesées : servent seulement à donner un ordre de grandeur de lait sur la journée
-function Weights({ open, close, notify }) {
-  const [w, setW] = useState(null)
-  const load = () => api('/weights').then(setW).catch(e => notify(e.message))
-  useEffect(() => { load() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
-  async function remove(id) {
-    try { await api(`/weights/${id}`, { method: 'DELETE' }); load(); notify('Pesée supprimée') } catch (e) { notify(e.message) }
-  }
-  const add = () => open(<WeightSheet onClose={close} onDone={(msg) => { close(); load(); notify(msg) }} />)
-  return (
-    <section>
-      <h2 className="section-h">Poids</h2>
-      <div className="group">
-        {w?.weights.slice(0, 4).map(x => (
-          <div key={x.id} className="cell">
-            <span className="grow"><span className="ttl rd" style={{ fontWeight: 600 }}>{x.kg} kg</span><span className="sub2" style={{ display: 'block' }}>{x.label}</span></span>
-            <Confirm className="link danger" label="Supprimer" confirm="Toucher encore" onConfirm={() => remove(x.id)} />
-          </div>
-        ))}
-        <button type="button" className="addrow" onClick={add}><Plus />Ajouter une pesée</button>
-      </div>
-      <p className="foot">
-        {w?.milk ? `D'après ${w.milk.kg} kg, les bébés de son âge boivent ${w.milk.label}. ` : ''}
-        Ce n'est qu'un ordre de grandeur (environ 150 ml par kilo jusqu'à 6 mois) : chaque bébé règle son appétit, et une journée à moins n'a rien d'inquiétant. Les quantités conseillées par votre pédiatre passent avant.
-      </p>
-    </section>
-  )
-}
-
-function WeightSheet({ onClose, onDone }) {
-  const d = new Date()
-  const [day, setDay] = useState(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
-  const [kg, setKg] = useState('')
-  const [err, setErr] = useState('')
-  const value = Number(String(kg).replace(',', '.'))
-  async function save() {
-    setErr('')
-    try { await api('/weights', { method: 'POST', body: { day, kg: value } }); onDone(`Pesée de ${String(value).replace('.', ',')} kg enregistrée`) } catch (e) { setErr(e.message) }
-  }
-  return (
-    <Sheet title="Pesée" onClose={onClose}>
-      <label className="field">Poids (kg)<input id="w-kg" className="input" inputMode="decimal" placeholder="5,5" value={kg} onChange={e => setKg(e.target.value)} /></label>
-      <label className="field">Date de la pesée<input id="w-day" type="date" className="input txt" value={day} onChange={e => setDay(e.target.value)} /></label>
-      {err && <p className="err">{err}</p>}
-      <button type="button" className="primary" disabled={!(value >= 1.5 && value <= 25)} onClick={save}>Enregistrer</button>
     </Sheet>
   )
 }

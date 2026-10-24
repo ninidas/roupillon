@@ -335,6 +335,13 @@ button.cell:active{background:var(--fill)}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--label2);padding:4px 6px 0}
 .legend span{display:flex;align-items:center;gap:6px}
 .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.who-band{fill:var(--pill-edge);opacity:.1}
+.who-band.inner{opacity:.14}
+.who-mid{fill:none;stroke:var(--pill-edge);stroke-width:1.2px;stroke-dasharray:4 4;opacity:.7}
+.w-line{fill:none;stroke:var(--sun);stroke-width:2px;stroke-linejoin:round;stroke-linecap:round}
+.w-dot{fill:var(--sun);stroke:var(--card);stroke-width:2px}
+.age-mark{fill:var(--label2)}
+.lg-band{background:var(--pill-edge);opacity:.35} .lg-mid{height:2px!important;background:var(--pill-edge)} .lg-dot{background:var(--sun);border-radius:5px!important}
 .lg-day{background:var(--action)} .lg-night{background:var(--bedc)} .lg-ref{background:var(--green);opacity:.35}
 
 /* Connexion */
