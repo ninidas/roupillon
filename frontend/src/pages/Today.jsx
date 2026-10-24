@@ -124,7 +124,7 @@ function CurrentDay({ t, night, onAct, busy, doneAt, edit, showDay, setShowDay, 
         </section>
       ) : (
         <section className="dial-wrap" aria-live="polite">
-          <Dial dial={t.dial} onPick={pickOn(t.timeline, edit)} />
+          <Dial dial={t.dial} onPick={pickOn(t.timeline, edit, t.feeds)} />
           <div className="center">
             <div className="cap">{HeadIcon && <HeadIcon />}{H.cap}</div>
             <div className={`big rd${H.big.length > 7 ? ' long' : ''}`}>{H.big}</div>
@@ -193,7 +193,7 @@ function PastDay({ past, edit, openDay }) {
   return (
     <>
       <section className="dial-wrap past">
-        <Dial dial={past.dial} onPick={pickOn(past.timeline, edit)} />
+        <Dial dial={past.dial} onPick={pickOn(past.timeline, edit, past.feeds)} />
         <div className="center">
           <div className="cap"><Moon />Siestes</div>
           <div className="big rd">{s ? s.day_sleep : '0 min'}</div>
@@ -220,7 +220,11 @@ function editItem(edit, x) {
   return edit({ kind: 'nap', title: real ? x.label : `Noter la ${x.label.toLowerCase()}`, event: real ? { id: x.id, start: x.start, end: x.end_real ? x.end : '' } : null, defaults: { start: x.start } })
 }
 // Toucher le cadran : la sieste, le soleil ou la lune ouvrent la même correction que leur ligne dans la frise
-const pickOn = (items, edit) => (kind, idx) => {
+const pickOn = (items, edit, feeds = []) => (kind, idx) => {
+  if (kind === 'feed') {
+    const f = feeds.find(x => x.id === idx)
+    return f && edit({ kind: 'feed', event: { id: f.id, start: f.time, ml: f.ml } })
+  }
   const x = items.find(i => i.type === kind && (kind !== 'nap' || i.idx === idx))
   if (x) editItem(edit, x)
 }

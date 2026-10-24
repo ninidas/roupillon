@@ -329,7 +329,7 @@ def dial(items, day, feeds, nm, mode) -> dict:
         "wake_label": E.fmt(wake), "bed_label": E.fmt(bed),
         "naps": [{"idx": x["idx"], "start": x["start"], "end": x["end"], "start_real": x["start_real"], "end_real": x["end_real"],
                   "label": E.fmt(x["start"])} for x in items if x["type"] == "nap"],
-        "feeds": [f["t"] for f in feeds if f["t"] is not None],
+        "feeds": [{"t": f["t"], "id": f["id"]} for f in feeds if f["t"] is not None],
     }
 
 
@@ -397,7 +397,8 @@ def day_view(db: Session, d: date, now: datetime) -> dict:
         last = max([x["end"] for x in kept if x["type"] == "nap"] or [day.wake + 600])
         kept.append({"type": "bed", "start": last + 90, "real": False, "id": None, "late": False})
     return {"date": d.isoformat(), "label": date_label(d), "summary": day_summary(db, d, now.date()),
-            "dial": dial(kept, day, feeds, -1, "day"), "timeline": timeline(kept, day, None, -1)}
+            "dial": dial(kept, day, feeds, -1, "day"), "timeline": timeline(kept, day, None, -1),
+            "feeds": [{"id": f["id"], "time": E.fmt(f["t"]), "ml": f["ml"]} for f in feeds]}
 
 
 def day_detail(db: Session, d: date) -> dict:

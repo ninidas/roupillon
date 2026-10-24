@@ -83,7 +83,7 @@ export default function Dial({ dial, onPick }) {
   const [wx, wy] = pol(R, -135), [bx, by] = pol(R, 135)
 
   return (
-    <svg viewBox="16 16 268 262" className="dial" aria-hidden="true">
+    <svg viewBox="6 4 288 276" className="dial" aria-hidden="true">
       <defs>
         <filter id="glow" filterUnits="userSpaceOnUse" x="-20" y="-20" width="340" height="340"><feGaussianBlur stdDeviation="6" /></filter>
         <linearGradient id="g-cloud" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffffff" /><stop offset="1" stopColor="#c9c4ff" /></linearGradient>
@@ -92,6 +92,19 @@ export default function Dial({ dial, onPick }) {
         <linearGradient id="g-dusk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ffd2a8" /><stop offset="1" stopColor="#ee8656" /></linearGradient>
       </defs>
       <path d={arc(R, -135, 135)} className="ring" strokeWidth={W} />
+
+      {/* Biberons : un petit point lumineux juste à l'extérieur de l'anneau, à son heure */}
+      {dial.feeds.filter(f => f.t >= wake && f.t <= bed).map((f) => {
+        const [fx, fy] = pol(R + W / 2 + 9, A(f.t))
+        return (
+          <g key={`f${f.id}`} className="feed-mk"><g {...tap('feed', f.id)}>
+            <circle cx={fx.toFixed(2)} cy={fy.toFixed(2)} r="7" filter="url(#glow)" className="feed-halo" />
+            <circle cx={fx.toFixed(2)} cy={fy.toFixed(2)} r="6.5" className="feed-c" />
+            <At x={fx} y={fy} size={9.5}><path d="M9 2h6M10 2v3l-2 3v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V8l-2-3V2M8 12h8" className="feed-g" /></At>
+            {onPick && <circle cx={fx.toFixed(2)} cy={fy.toFixed(2)} r="13" className="hit-c" />}
+          </g></g>
+        )
+      })}
 
       {dial.naps.map((x, i) => {
         const a0 = A(x.start), full = A(x.end)

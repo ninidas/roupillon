@@ -6,7 +6,7 @@
   --indigo:#5b57d6; --action:#5b57d6; --orange:#e8863a; --green:#2e8f58; --red:#d93a30; --bedc:#3d3a8f;
   --nap-tint:rgba(91,87,214,.12); --feed:#8c8a9c; --on-accent:#ffffff; --pill:rgba(255,255,255,.94); --backdrop:rgba(20,18,30,.32);
   --ring:#ecebf3; --ring-past:#e1dfec; --pill-fill:#5b57d6; --pill-edge:#4a46c4; --glyph:#ffffff; --halo:transparent;
-  --sun:#e8863a; --sun-fill:#fff4ea; --moon:#3d3a8f; --moon-fill:#eeedf9; --now:#2e8f58;
+  --sun:#e8863a; --sun-fill:#fff4ea; --moon:#3d3a8f; --moon-fill:#eeedf9; --now:#2e8f58; --feed-dot:#8c8a9c;
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
   --round:ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif;
   color-scheme:light;
@@ -23,14 +23,14 @@
   --indigo:#b3aeff; --action:#6c66f0; --orange:#f5c26b; --green:#4cd992; --red:#ff7a70; --bedc:#4a43a0;
   --nap-tint:rgba(139,133,255,.16); --feed:#a9a4d6; --on-accent:#ffffff; --pill:rgba(34,31,69,.96); --backdrop:rgba(5,4,15,.6);
   --ring:#2a2852; --ring-past:#2a2852; --pill-fill:#3a3680; --pill-edge:#a49eff; --glyph:#e9e7ff; --halo:rgba(139,133,255,.55);
-  --sun:#f5c26b; --sun-fill:#3b3355; --moon:#f09a6b; --moon-fill:#3e2f52; --now:#4cd992; color-scheme:dark}
+  --sun:#f5c26b; --sun-fill:#3b3355; --moon:#f09a6b; --moon-fill:#3e2f52; --now:#4cd992; --feed-dot:#e9e7ff; color-scheme:dark}
 /* Nuit : quel que soit le choix, écran très sombre et couleurs chaudes, pour ne pas éblouir dans le noir */
 :root[data-night]{
   --bg:#000000; --card:#0d0c12; --fill:#18171f; --label:#cfc2b0; --label2:#7f776c; --sep:#22222b;
   --indigo:#9d93d6; --action:#3b3566; --orange:#b8792f; --green:#5b8f68; --red:#b5544a; --bedc:#3b3566;
   --nap-tint:rgba(106,96,184,.18); --feed:#7f776c; --on-accent:#ede3d2; --pill:rgba(10,10,14,.96); --backdrop:rgba(0,0,0,.6);
   --ring:#16151c; --ring-past:#1d1c25; --pill-fill:#2a2547; --pill-edge:#6a60b8; --glyph:#d8cdbd; --halo:transparent;
-  --sun:#b8792f; --sun-fill:#1d160d; --moon:#a07a5e; --moon-fill:#1d1513; --now:#5b8f68; color-scheme:dark}
+  --sun:#b8792f; --sun-fill:#1d160d; --moon:#a07a5e; --moon-fill:#1d1513; --now:#5b8f68; --feed-dot:#7f776c; color-scheme:dark}
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);transition:background-color .9s ease}
@@ -86,7 +86,10 @@ h1{font-family:var(--round);font-size:34px;font-weight:800;letter-spacing:-.02em
 .pill.real .pill-shape{fill:var(--pill-fill);stroke:var(--pill-edge)}
 .pill.plan .pill-shape{fill:var(--ring);stroke:var(--pill-edge);stroke-opacity:.6;stroke-dasharray:3 4}
 .glyph{fill:var(--glyph)} .glyph-plan{fill:var(--pill-edge);opacity:.6}
-.feed-dot{fill:var(--feed);opacity:.8}
+.feed-mk{animation:mkin .5s ease-out both}
+.feed-halo{fill:var(--feed-dot);opacity:.35}
+.feed-c{fill:var(--bg);stroke:var(--feed-dot);stroke-width:1.2px}
+.feed-g{fill:none;stroke:var(--feed-dot);stroke-width:2.6px;stroke-linecap:round;stroke-linejoin:round}
 .mk-in{animation:mkin .45s ease-out both}
 .tap{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
 .tap:active{opacity:.6}
