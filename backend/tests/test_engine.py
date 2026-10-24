@@ -63,3 +63,17 @@ def test_reperes_progressifs_selon_l_age():
     for d in range(0, 400):
         a, b = E.smooth_age(d), E.smooth_age(d + 1)
         assert all(abs(a[k] - b[k]) <= 2 for k in E.SMOOTH), d
+
+
+def test_le_soir_s_adapte_a_ses_habitudes():
+    # 4 soirs : dernière sieste finie à 17:00, couchée à 19:15, soit 2 h 15 d'éveil
+    days = [E.Day(date=date(2026, 10, 20 + k), wake=420, wake_real=True, naps=[E.Span(900, 1020)], bed=19 * 60 + 15)
+            for k in range(4)]
+    hab = E.habits(days)
+    assert hab["last"] == (135, 4) and hab["bedtime"] == (19 * 60 + 15, 4)
+    ev = E.evening(AGE, hab)
+    # 4 journées pèsent deux tiers : 1 h 45 de repère, 2 h 15 chez elle, environ 2 h 05 retenus
+    assert round(ev["wl"]) == 125
+    assert ev["bed_min"] > AGE["bed_min"] and ev["bed_max"] - ev["bed_min"] == AGE["bed_max"] - AGE["bed_min"]
+    # sans habitudes, les repères de l'âge
+    assert E.evening(AGE, {}) == {"wl": AGE["wl"], "bed_min": AGE["bed_min"], "bed_max": AGE["bed_max"]}

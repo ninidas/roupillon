@@ -119,10 +119,24 @@ class Day:
     night: list[Span] = field(default_factory=list)
 
 
+def evening(age: dict, hab: dict) -> dict:
+    """Repères du soir mêlés à ses habitudes : dernier éveil avant le coucher, et plage de coucher
+    recentrée sur l'heure où elle est couchée d'habitude (au plus une heure plus tôt ou plus tard)."""
+    wl = _blend(age["wl"], hab.get("last"))
+    half = (age["bed_max"] - age["bed_min"]) / 2
+    center = age["bed_min"] + half
+    h = hab.get("bedtime")
+    if h:
+        med, n = h
+        center += max(-60, min(60, (med - center) * n / (n + PRIOR)))
+    return {"wl": wl, "bed_min": center - half, "bed_max": center + half}
+
+
 def plan(day: Day, age: dict, hab: dict | None = None) -> list[dict]:
     """La journée prévue : lever, éveils, siestes (réelles puis prévues), coucher.
     hab : ses habitudes (voir habits), mêlées aux repères de l'âge."""
     hab = hab or {}
+    age = age | evening(age, hab)
     items = [{"type": "sun", "start": day.wake, "real": day.wake_real, "id": day.wake_id}]
     t, short = day.wake, False
     for i in range(max(8, len(day.naps))):
@@ -201,15 +215,25 @@ def habits(days: list[Day]) -> dict:
             acc[key].append([])
         acc[key][i].append((v, w))
 
+    last, beds = [], []
     for k, d in enumerate(days):
         w = DECAY ** k
+        # Le soir : éveil entre la fin de la dernière sieste et le coucher, et l'heure du coucher
+        if d.bed is not None and 16 * 60 <= d.bed <= 23 * 60:
+            beds.append((d.bed, w))
+            ends = [n.end for n in d.naps if n.end is not None and n.end < d.bed]
+            if ends and 30 <= d.bed - max(ends) <= 300:
+                last.append((d.bed - max(ends), w))
         for i, v in enumerate(stats(d)["wins"]):
             if v is not None:
                 add("wins", i, v, w)
         for i, n in enumerate(d.naps):
             if n.start is not None and n.end is not None and NAP_MIN <= n.end - n.start <= NAP_MAX:
                 add("naps", i, n.end - n.start, w)
-    return {key: [(round(_wmedian(v)), len(v)) if v else None for v in rows] for key, rows in acc.items()}
+    out = {key: [(round(_wmedian(v)), len(v)) if v else None for v in rows] for key, rows in acc.items()}
+    out["last"] = (round(_wmedian(last)), len(last)) if last else None
+    out["bedtime"] = (round(_wmedian(beds)), len(beds)) if beds else None
+    return out
 
 
 def _blend(ref: float, h) -> float:

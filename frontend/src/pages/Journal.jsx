@@ -63,6 +63,10 @@ export default function Journal({ open, close, notify, status, version }) {
                   <span><b>{r.nap}</b><small>repère {r.nap_ref}</small></span>
                 </Fragment>
               ))}
+              {/* Le soir : dernier éveil avant le coucher, et la plage où le coucher est prévu */}
+              <span className="rh-l">Coucher</span>
+              <span><b>{h.evening.win}</b><small>repère {h.evening.win_ref}</small></span>
+              <span><b>{h.evening.bed}</b><small>{h.evening.usual ? `couchée vers ${h.evening.usual}` : `repère ${h.evening.bed_ref}`}</small></span>
             </div>
           </div>
           <p className="foot">

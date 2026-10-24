@@ -298,7 +298,12 @@ def history(days: int = 30, user: models.User = Depends(current_user), db: Sessi
              "nap": E.dur(E.nap_length(age, hab, i)), "nap_ref": E.dur(age["naps"][min(i, len(age["naps"]) - 1)]),
              "nap_her": her("naps", i)} for i in range(n)]
     learned = max([h[1] for key in ("wins", "naps") for h in hab[key] if h] or [0])
-    return {"days": out, "rhythm": rows, "learned_days": learned,
+    ev = E.evening(age, hab)
+    evening = {"win": E.dur(ev["wl"]), "win_ref": E.dur(age["wl"]),
+               "bed": f"{E.fmt(ev['bed_min'])} à {E.fmt(ev['bed_max'])}",
+               "bed_ref": f"{E.fmt(age['bed_min'])} à {E.fmt(age['bed_max'])}",
+               "usual": E.fmt(hab["bedtime"][0]) if hab.get("bedtime") else None}
+    return {"days": out, "rhythm": rows, "learned_days": learned, "evening": evening,
             "ref_24h": {"lo": lo * 60, "hi": hi * 60, "label": S.REF_24H[S.age_for(cfg, now.date())]}}
 
 
