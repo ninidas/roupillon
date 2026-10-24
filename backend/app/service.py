@@ -105,6 +105,24 @@ def settings(db: Session) -> dict:
     }
 
 
+def weight_on(db: Session, d: date):
+    """Dernière pesée faite au plus tard le jour d."""
+    return (db.query(models.Weight).filter(models.Weight.day <= d.isoformat())
+            .order_by(models.Weight.day.desc(), models.Weight.id.desc()).first())
+
+
+def milk_info(db: Session, cfg: dict, d: date) -> dict | None:
+    w = weight_on(db, d)
+    if not w or not cfg["birth_date"]:
+        return None
+    ref = E.milk_ref(w.grams, (d - date.fromisoformat(cfg["birth_date"])).days)
+    if not ref:
+        return None
+    kg = f"{w.grams / 1000:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+    return ref | {"kg": kg, "weighed": short_label(date.fromisoformat(w.day), d).lower(),
+                  "label": f"souvent {ref['lo']} à {ref['hi']} ml par jour"}
+
+
 def age_for(cfg: dict, today: date) -> str:
     if cfg["manual_age"] in E.AGE_BY_ID:
         return cfg["manual_age"]
@@ -294,7 +312,8 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
 
     # Biberons
     lf = last_feed(db, now)
-    feed = {"count": len(feeds), "ml": sum(f["ml"] or 0 for f in feeds), "last": None, "ask_id": None}
+    feed = {"count": len(feeds), "ml": sum(f["ml"] or 0 for f in feeds), "last": None, "ask_id": None,
+            "ref": milk_info(db, cfg, d)}
     if lf:
         t = parse(lf.start)
         ago = int((now - t).total_seconds() // 60)

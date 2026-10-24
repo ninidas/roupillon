@@ -42,3 +42,13 @@ class Event(Base):
     updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Weight(Base):
+    """Une pesée (chez le pédiatre, à la maison). Sert seulement au repère de lait, jamais aux siestes."""
+    __tablename__ = "weights"
+    id = Column(Integer, primary_key=True)
+    day = Column(String, nullable=False, index=True)    # AAAA-MM-JJ
+    grams = Column(Integer, nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

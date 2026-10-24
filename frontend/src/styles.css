@@ -151,6 +151,8 @@ h1{font-family:var(--round);font-size:34px;font-weight:800;letter-spacing:-.02em
 .feedbtn{border:0;border-radius:14px;min-height:44px;padding:0 14px;background:var(--fill);color:var(--label);font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;flex:none}
 .feedbtn svg{width:16px;height:16px}
 
+.feed-ref{margin:-10px 8px 0;font-size:13px;line-height:1.4;color:var(--label2);font-variant-numeric:tabular-nums;text-wrap:pretty}
+
 /* Groupes */
 .group{background:var(--card);border-radius:18px;overflow:hidden}
 .cell{display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:52px;position:relative;width:100%;text-align:left;background:none;border:0}

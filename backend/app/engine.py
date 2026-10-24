@@ -17,6 +17,19 @@ DEFAULT_WAKE = 7 * 60
 SHORT_NAP = 45      # en dessous, l'éveil suivant est raccourci
 CUT = 12            # de combien
 FEED_INTERVAL = 210  # écart habituel entre deux biberons
+# Repère de lait sur une journée, jusqu'à 6 mois : autour de 150 ml par kilo (130 à 170 ici),
+# sans dépasser environ un litre. Un ordre de grandeur, jamais une quantité à atteindre.
+MILK_PER_KG = (130, 170)
+MILK_MAX = 1000
+MILK_UNTIL_DAYS = 183
+
+
+def milk_ref(grams: int, age_days: int) -> dict | None:
+    if age_days >= MILK_UNTIL_DAYS:
+        return None
+    r50 = lambda v: int(round(v / 50) * 50)
+    lo, hi = (r50(min(MILK_MAX, k * grams / 1000)) for k in MILK_PER_KG)
+    return {"lo": lo, "hi": hi}
 
 
 def fmt(m: float) -> str:

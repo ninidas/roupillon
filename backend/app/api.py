@@ -302,6 +302,45 @@ def history(days: int = 30, user: models.User = Depends(current_user), db: Sessi
             "ref_24h": {"lo": lo * 60, "hi": hi * 60, "label": S.REF_24H[S.age_for(cfg, now.date())]}}
 
 
+# ---------- poids ----------
+
+class WeightNew(BaseModel):
+    day: date
+    kg: float = Field(ge=1.5, le=25)
+
+
+def weight_out(w: models.Weight) -> dict:
+    return {"id": w.id, "day": w.day, "label": S.date_label(date.fromisoformat(w.day)),
+            "kg": f"{w.grams / 1000:.2f}".rstrip("0").rstrip(".").replace(".", ",")}
+
+
+@router.get("/weights")
+def list_weights(user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    ws = db.query(models.Weight).order_by(models.Weight.day.desc(), models.Weight.id.desc()).all()
+    cfg = S.settings(db)
+    return {"weights": [weight_out(w) for w in ws], "milk": S.milk_info(db, cfg, S.now_local().date())}
+
+
+@router.post("/weights")
+def add_weight(body: WeightNew, user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    if body.day > S.now_local().date():
+        raise HTTPException(status_code=422, detail="Cette date est dans le futur")
+    w = models.Weight(day=body.day.isoformat(), grams=round(body.kg * 1000), created_by=user.id)
+    db.add(w)
+    db.commit()
+    return weight_out(w)
+
+
+@router.delete("/weights/{wid}")
+def delete_weight(wid: int, user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    w = db.get(models.Weight, wid)
+    if not w:
+        raise HTTPException(status_code=404, detail="Pesée introuvable")
+    db.delete(w)
+    db.commit()
+    return {"deleted": 1}
+
+
 # ---------- réglages ----------
 
 @router.get("/settings")

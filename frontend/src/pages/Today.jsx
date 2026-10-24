@@ -155,6 +155,10 @@ function CurrentDay({ t, night, onAct, busy, doneAt, edit, showDay, setShowDay, 
         </div>
         <button type="button" className="feedbtn" disabled={busy} onClick={() => onAct('feed')}><Plus />Biberon</button>
       </div>
+      {t.feed.ref && (
+        // Repère neutre : un ordre de grandeur sur la journée, jamais un objectif ni une alerte
+        <p className="feed-ref">{t.feed.ml ? `${t.feed.ml} ml aujourd'hui` : "Pas encore de lait noté aujourd'hui"} · à {t.feed.ref.kg} kg, {t.feed.ref.label}</p>
+      )}
       {t.feed.ask_id && (
         <div className="quick fit" aria-label="Quantité du dernier biberon">
           {ML.slice(0, 5).map(v => <button key={v} type="button" onClick={() => setMl(v)}>{v} ml</button>)}

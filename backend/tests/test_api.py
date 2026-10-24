@@ -248,3 +248,16 @@ def test_pas_de_biberon_annonce_apres_le_coucher(client, auth, clock):
     assert t["feed"]["last"]["next_label"] == "prochain au lever"   # 21:00 tomberait après le coucher prévu
     clock.set("2026-10-24 19:00")
     assert act(client, auth, "bed").json()["today"]["feed"]["last"]["next_label"] == "prochain au lever"
+
+
+def test_poids_et_repere_de_lait(client, auth, clock):
+    clock.set("2026-10-24 10:00")
+    assert client.get("/api/today", headers=auth).json()["feed"]["ref"] is None
+    assert client.post("/api/weights", json={"day": "2026-10-30", "kg": 5.5}, headers=auth).status_code == 422
+    w = client.post("/api/weights", json={"day": "2026-10-20", "kg": 5.5}, headers=auth).json()
+    assert w["kg"] == "5,5"
+    ref = client.get("/api/today", headers=auth).json()["feed"]["ref"]
+    assert (ref["lo"], ref["hi"], ref["kg"]) == (700, 950, "5,5")
+    assert client.get("/api/weights", headers=auth).json()["weights"][0]["id"] == w["id"]
+    client.delete(f"/api/weights/{w['id']}", headers=auth)
+    assert client.get("/api/today", headers=auth).json()["feed"]["ref"] is None
