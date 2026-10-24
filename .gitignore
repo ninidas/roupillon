@@ -1,0 +1,7 @@
+data/
+data-dev/
+node_modules/
+dist/
+__pycache__/
+.env*
+/*.sh

@@ -1,0 +1,27 @@
+# Instance de dev, à côté de la prod :
+#   docker compose -f docker-compose.dev.yml up -d --build
+# Base séparée (./data-dev). Par défaut joignable seulement depuis la machine ;
+# DEV_BIND dans un fichier .env (non versionné) l'ouvre à une autre adresse, par exemple celle d'un VPN.
+name: roupillon-dev
+
+services:
+  roupillon-dev:
+    build: .
+    image: roupillon:dev
+    container_name: roupillon-dev
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - ./data-dev:/data
+    ports:
+      - "${DEV_BIND:-127.0.0.1}:8007:8000"
+    networks:
+      - roupillon-dev
+    labels:
+      - com.centurylinklabs.watchtower.enable=false
+
+networks:
+  roupillon-dev:
+    driver: bridge
