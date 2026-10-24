@@ -158,16 +158,16 @@ def test_reprise_de_l_ancien_oracle(client, auth, clock):
     from app import import_oracle
     from app.database import SessionLocal
     db = SessionLocal()
-    n = import_oracle.import_day(db, date(2026, 10, 17), {
+    n = import_oracle.import_day(db, date(2026, 3, 2), {
         "wake": "07:00", "wakeSet": False, "feeds": [{"t": "08:00", "ml": 120}],
-        "naps": {"1": {"start": "12:18", "end": "13:10"}, "0": {"start": "09:18", "end": "10:34"}},
+        "naps": {"1": {"start": "12:40", "end": "13:30"}, "0": {"start": "09:05", "end": "10:20"}},
         "bed": "19:30", "night": [{"start": "02:10", "end": "02:30"}]})
     db.commit()
     assert n == 5   # lever non noté : pas repris
-    assert import_oracle.import_day(db, date(2026, 10, 17), {"naps": {"0": {"start": "09:00"}}}) == 0
+    assert import_oracle.import_day(db, date(2026, 3, 2), {"naps": {"0": {"start": "09:00"}}}) == 0
     db.close()
-    d = client.get("/api/days/2026-10-17", headers=auth).json()
-    assert [x["start"] for x in d["naps"]] == ["09:18", "12:18"] and d["bed"]["time"] == "19:30"
+    d = client.get("/api/days/2026-03-02", headers=auth).json()
+    assert [x["start"] for x in d["naps"]] == ["09:05", "12:40"] and d["bed"]["time"] == "19:30"
     assert d["night"][0]["dur"] == "20 min" and d["feeds"][0]["ml"] == 120
 
 

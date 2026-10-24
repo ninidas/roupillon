@@ -21,8 +21,8 @@ def _trusted(ip: str) -> bool:
 
 
 def client_ip(request: Request) -> str:
-    """Adresse du visiteur. L'app est derrière Cloudflare puis SWAG : sans cela, toutes les requêtes
-    semblent venir de SWAG et la limite de connexion serait commune à tout le monde.
+    """Adresse du visiteur. Derrière un proxy inverse, sans cela, toutes les requêtes
+    semblent venir du proxy et la limite de connexion serait commune à tout le monde.
     On remonte X-Forwarded-For depuis la droite (ce qu'ont ajouté nos propres proxys) jusqu'à la première
     adresse qui n'est pas un proxy de confiance : ce que le visiteur a pu écrire lui-même à gauche est
     ignoré. CF-Connecting-IP n'est plus lu : n'importe quel client pouvait l'envoyer."""

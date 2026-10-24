@@ -1,5 +1,5 @@
 """Reprise des journées de l'ancien oracle (une page HTML) : python -m app.import_oracle jour1.json ...
-Chaque fichier porte le nom de sa date (2026-10-17.json) et contient la journée au format de l'oracle."""
+Chaque fichier porte le nom de sa date (2026-03-02.json) et contient la journée au format de l'oracle."""
 import json
 import sys
 from datetime import date
