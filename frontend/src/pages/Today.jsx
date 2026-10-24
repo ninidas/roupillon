@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Dial from '../components/Dial'
 import EventSheet, { ML } from '../components/EventSheet'
 import { Bed, Bottle, Check, Chevron, Eye, Moon, Pencil, Plus, Sun } from '../components/Icons'
@@ -22,7 +22,6 @@ function weekOf(iso, n) {
 export default function Today({ today, onAct, open, close, refresh, notify, busy, status, doneAt, version }) {
   const t = today
   const [sel, setSel] = useState(null)        // jour passé affiché, null = la journée en cours
-  const [week, setWeek] = useState(0)         // 0 = semaine en cours, -1 = la précédente...
   const [past, setPast] = useState(null)
   const [showDay, setShowDay] = useState(false)
   const night = t.mode === 'night'
@@ -30,7 +29,6 @@ export default function Today({ today, onAct, open, close, refresh, notify, busy
 
   const loadPast = () => sel && api(`/days/${sel}/view`).then(setPast).catch(e => notify(e.message))
   useEffect(() => { setPast(null); if (viewing) loadPast() }, [sel, version])  // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (!sel) setWeek(0) }, [sel])
 
   const done = (msg) => { close(); refresh(); if (viewing) loadPast(); notify(msg) }
   const edit = (day) => (props) => open(<EventSheet day={day} {...props} onClose={close} onDone={done} />)
@@ -44,8 +42,7 @@ export default function Today({ today, onAct, open, close, refresh, notify, busy
         {status}
       </header>
 
-      {!night && <WeekStrip current={t.date} sel={sel || t.date} week={week} setWeek={setWeek}
-        pick={(iso) => setSel(iso === t.date ? null : iso)} />}
+      {!night && <WeekStrip current={t.date} sel={sel || t.date} pick={(iso) => setSel(iso === t.date ? null : iso)} />}
 
       {viewing
         ? <PastDay past={past} edit={edit(sel)} openDay={() => open(<DaySheet date={sel} title={past?.label || ''} onClose={() => { close(); loadPast(); refresh() }} open={open} notify={notify} />)} />
@@ -55,31 +52,42 @@ export default function Today({ today, onAct, open, close, refresh, notify, busy
   )
 }
 
-// Bande de la semaine : toucher un jour pour le revoir, glisser pour changer de semaine
-function WeekStrip({ current, sel, week, setWeek, pick }) {
-  const x0 = useRef(null)
-  const days = weekOf(current, week)
+// Bande de la semaine : elle suit le doigt et se cale sur la semaine voisine, comme une page iOS.
+// Les 26 dernières semaines sont là, côte à côte ; on arrive sur la semaine en cours, la plus à droite.
+const WEEKS = 26
+function WeekStrip({ current, sel, pick }) {
+  const ref = useRef(null)
+  const weeks = useMemo(() => Array.from({ length: WEEKS }, (_, i) => weekOf(current, i - WEEKS + 1)), [current])
+  const [shown, setShown] = useState(WEEKS - 1)
+  useLayoutEffect(() => { const el = ref.current; el.scrollLeft = el.scrollWidth }, [current])
+  // Retour à aujourd'hui (ou jour choisi ailleurs) : la bande glisse jusqu'à sa semaine
+  useEffect(() => {
+    const el = ref.current, i = weeks.findIndex(w => w.includes(sel))
+    if (i >= 0 && Math.round(el.scrollLeft / el.clientWidth) !== i) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' })
+  }, [sel, weeks])
+  const onScroll = () => { const el = ref.current; setShown(Math.round(el.scrollLeft / el.clientWidth)) }
+  const first = fromIso(weeks[shown][0])
+  const month = first.toLocaleDateString('fr-FR', { month: 'long', year: shown < WEEKS - 5 ? 'numeric' : undefined })
   return (
-    <div className="week" aria-label="Semaine, faites glisser pour changer de semaine"
-      onTouchStart={e => { x0.current = e.touches[0].clientX }}
-      onTouchEnd={e => {
-        if (x0.current == null) return
-        const dx = e.changedTouches[0].clientX - x0.current
-        x0.current = null
-        if (dx > 50) setWeek(week - 1)
-        else if (dx < -50 && week < 0) setWeek(week + 1)
-      }}>
-      {days.map((iso, i) => {
-        const future = iso > current
-        return (
-          <button key={iso} type="button" disabled={future} aria-pressed={iso === sel}
-            aria-label={`${DAY_NAMES[i]} ${Number(iso.slice(8))}`}
-            className={`wd${iso === current ? ' today' : ''}`} onClick={() => pick(iso)}>
-            <span className="wd-i">{INI[i]}</span>
-            <span className="wd-n rd">{Number(iso.slice(8))}</span>
-          </button>
-        )
-      })}
+    <div className="weeks">
+      <div className={`weeks-m${shown === WEEKS - 1 ? ' here' : ''}`} aria-live="polite">{month}</div>
+      <div className="weeks-scroll" ref={ref} onScroll={onScroll} aria-label="Semaines, faites glisser pour remonter le temps">
+        {weeks.map((days, w) => (
+          <div className="week" key={days[0]}>
+            {days.map((iso, i) => {
+              const future = iso > current
+              return (
+                <button key={iso} type="button" disabled={future} aria-pressed={iso === sel}
+                  aria-label={`${DAY_NAMES[i]} ${Number(iso.slice(8))}`} tabIndex={w === shown ? 0 : -1}
+                  className={`wd${iso === current ? ' today' : ''}`} onClick={() => pick(iso)}>
+                  <span className="wd-i">{INI[i]}</span>
+                  <span className="wd-n rd">{Number(iso.slice(8))}</span>
+                </button>
+              )
+            })}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

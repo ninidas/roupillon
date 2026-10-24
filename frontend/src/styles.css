@@ -62,7 +62,12 @@ h1{font-family:var(--round);font-size:34px;font-weight:800;letter-spacing:-.02em
 .top .pill{margin-top:6px}
 
 /* Semaine */
-.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;touch-action:pan-y}
+.weeks{display:flex;flex-direction:column;gap:6px;margin:0 -16px}
+.weeks-m{text-align:center;font-size:13px;font-weight:600;color:var(--label2);text-transform:capitalize;height:16px;transition:opacity .25s}
+.weeks-m.here{opacity:0}
+.weeks-scroll{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.weeks-scroll::-webkit-scrollbar{display:none}
+.week{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;padding:2px 16px 4px}
 .wd{border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;color:var(--label2)}
 .wd-i{font-size:12px;font-weight:600}
 .wd-n{width:40px;height:40px;border-radius:20px;display:grid;place-items:center;font-size:16px;font-weight:600;color:var(--label);background:var(--fill);transition:box-shadow .25s,color .25s}
