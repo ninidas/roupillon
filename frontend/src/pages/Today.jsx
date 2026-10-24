@@ -150,7 +150,7 @@ function CurrentDay({ t, night, onAct, busy, doneAt, edit, showDay, setShowDay, 
         <span className="feedline-i"><Bottle /></span>
         <div className="grow">
           {t.feed.last
-            ? <><b>Biberon à {t.feed.last.time}{t.feed.last.ml ? ` · ${t.feed.last.ml} ml` : ''}</b><span>prochain vers {t.feed.last.next}</span></>
+            ? <><b>Biberon à {t.feed.last.time}{t.feed.last.ml ? ` · ${t.feed.last.ml} ml` : ''}</b><span>{t.feed.last.next_label}</span></>
             : <><b>Aucun biberon noté</b><span>aujourd'hui</span></>}
         </div>
         <button type="button" className="feedbtn" disabled={busy} onClick={() => onAct('feed')}><Plus />Biberon</button>

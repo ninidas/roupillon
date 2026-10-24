@@ -236,3 +236,15 @@ def test_cadran_apres_l_heure_du_coucher_prevu(client, auth, clock):
     d = t["dial"]
     # coucher prévu largement dépassé : le biberon de 22:00 et « maintenant » restent sur le cadran
     assert d["bed"] >= 22 * 60 and any(f["t"] == 22 * 60 for f in d["feeds"]) and d["bed_label"] != "22:10"
+
+
+def test_pas_de_biberon_annonce_apres_le_coucher(client, auth, clock):
+    clock.set("2026-10-24 07:00")
+    act(client, auth, "wake")
+    clock.set("2026-10-24 10:00")
+    assert act(client, auth, "feed").json()["today"]["feed"]["last"]["next_label"] == "prochain vers 13:30"
+    clock.set("2026-10-24 17:30")
+    t = act(client, auth, "feed").json()["today"]
+    assert t["feed"]["last"]["next_label"] == "prochain au lever"   # 21:00 tomberait après le coucher prévu
+    clock.set("2026-10-24 19:00")
+    assert act(client, auth, "bed").json()["today"]["feed"]["last"]["next_label"] == "prochain au lever"

@@ -298,8 +298,13 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
     if lf:
         t = parse(lf.start)
         ago = int((now - t).total_seconds() // 60)
+        nxt = t + timedelta(minutes=E.FEED_INTERVAL)
+        # Après le coucher, pas de biberon prévu : ils reprennent au lever (un réveil nocturne peut
+        # en amener un, il se note alors comme d'habitude, sans être annoncé)
+        after_bed = mode == "night" or (items[-1]["type"] == "bed" and nxt >= at(d, items[-1]["start"]))
         feed["last"] = {"id": lf.id, "time": t.strftime("%H:%M"), "ml": lf.ml, "ago": E.dur(ago),
-                        "next": (t + timedelta(minutes=E.FEED_INTERVAL)).strftime("%H:%M")}
+                        "next": None if after_bed else nxt.strftime("%H:%M"),
+                        "next_label": "prochain au lever" if after_bed else f"prochain vers {nxt:%H:%M}"}
         if lf.ml is None and 0 <= ago < 30:
             feed["ask_id"] = lf.id
 
