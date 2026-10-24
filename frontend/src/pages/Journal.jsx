@@ -151,7 +151,7 @@ function summary(d) {
   parts.push(d.naps === 1 ? '1 sieste' : `${d.naps} siestes`)
   if (d.bed) parts.push(`couchée ${d.bed}`)
   if (d.night) parts.push(`nuit ${d.night.sleep}${d.night.count ? `, ${d.night.count} réveil${d.night.count > 1 ? 's' : ''}` : ''}`)
-  if (d.feeds) parts.push(`${d.feeds} biberon${d.feeds > 1 ? 's' : ''}`)
+  if (d.feeds) parts.push(`${d.feeds} biberon${d.feeds > 1 ? 's' : ''}${d.ml ? `, ${d.ml} ml` : ''}`)
   // Espaces insécables : « 1 h 35 » ne se coupe pas en fin de ligne
   return parts.join(' · ').replace(/(\d) h (\d)/g, '$1\u00a0h\u00a0$2').replace(/(\d) (h|min|ml)\b/g, '$1\u00a0$2')
 }

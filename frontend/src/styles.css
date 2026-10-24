@@ -147,6 +147,8 @@ h1{font-family:var(--round);font-size:34px;font-weight:800;letter-spacing:-.02em
 .feedline-i svg{width:22px;height:22px}
 .feedline .grow{display:flex;flex-direction:column;font-variant-numeric:tabular-nums;min-width:0}
 .feedline b{font-size:15px;font-weight:600}
+.feedline .feed-total{white-space:nowrap;font-size:22px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.feed-total small{font-family:var(--font);font-size:14px;font-weight:500;color:var(--label2);letter-spacing:0}
 .feedline .grow span{font-size:13px;color:var(--label2)}
 .feedbtn{border:0;border-radius:14px;min-height:44px;padding:0 14px;background:var(--fill);color:var(--label);font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;flex:none}
 .feedbtn svg{width:16px;height:16px}

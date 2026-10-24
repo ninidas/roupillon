@@ -148,16 +148,17 @@ function CurrentDay({ t, night, onAct, busy, doneAt, edit, showDay, setShowDay, 
 
       <div className="feedline">
         <span className="feedline-i"><Bottle /></span>
+        {/* Le total du jour d'abord, lisible d'un coup d'œil ; le dernier biberon et le prochain en dessous */}
         <div className="grow">
-          {t.feed.last
-            ? <><b>Biberon à {t.feed.last.time}{t.feed.last.ml ? ` · ${t.feed.last.ml} ml` : ''}</b><span>{t.feed.last.next_label}</span></>
-            : <><b>Aucun biberon noté</b><span>aujourd'hui</span></>}
+          <b className="feed-total rd">{t.feed.ml || 0} ml<small> aujourd'hui</small></b>
+          <span>{t.feed.count ? `${t.feed.count} biberon${t.feed.count > 1 ? 's' : ''}` : 'aucun biberon'}{t.feed.last ? ` · dernier à ${t.feed.last.time}` : ''}</span>
+          {t.feed.last && <span>{t.feed.last.next_label}</span>}
         </div>
         <button type="button" className="feedbtn" disabled={busy} onClick={() => onAct('feed')}><Plus />Biberon</button>
       </div>
       {t.feed.ref && (
         // Repère neutre : un ordre de grandeur sur la journée, jamais un objectif ni une alerte
-        <p className="feed-ref">{t.feed.ml ? `${t.feed.ml} ml aujourd'hui` : "Pas encore de lait noté aujourd'hui"} · à {t.feed.ref.kg} kg, {t.feed.ref.label}</p>
+        <p className="feed-ref">Pour {t.feed.ref.kg} kg, les bébés de son âge boivent {t.feed.ref.label.replace(/(\d) ml/g, '$1\u00a0ml')}, à titre indicatif.</p>
       )}
       {t.feed.ask_id && (
         <div className="quick fit" aria-label="Quantité du dernier biberon">
