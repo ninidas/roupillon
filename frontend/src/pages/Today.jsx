@@ -124,7 +124,7 @@ function CurrentDay({ t, night, onAct, busy, doneAt, edit, showDay, setShowDay, 
         </section>
       ) : (
         <section className="dial-wrap" aria-live="polite">
-          <Dial dial={t.dial} />
+          <Dial dial={t.dial} onPick={pickOn(t.timeline, edit)} />
           <div className="center">
             <div className="cap">{HeadIcon && <HeadIcon />}{H.cap}</div>
             <div className={`big rd${H.big.length > 7 ? ' long' : ''}`}>{H.big}</div>
@@ -193,7 +193,7 @@ function PastDay({ past, edit, openDay }) {
   return (
     <>
       <section className="dial-wrap past">
-        <Dial dial={past.dial} />
+        <Dial dial={past.dial} onPick={pickOn(past.timeline, edit)} />
         <div className="center">
           <div className="cap"><Moon />Siestes</div>
           <div className="big rd">{s ? s.day_sleep : '0 min'}</div>
@@ -212,6 +212,19 @@ function PastDay({ past, edit, openDay }) {
   )
 }
 
+// Ouvre la correction d'un fait de la frise (lever, sieste, coucher), réel ou encore prévu
+function editItem(edit, x) {
+  if (x.type === 'wake') return edit({ kind: 'wake', event: x.real ? { id: x.id, start: x.time } : null, defaults: { start: x.time } })
+  if (x.type === 'bed') return edit({ kind: 'bed', event: x.real ? { id: x.id, start: x.time } : null, defaults: { start: x.time } })
+  const real = x.start_real
+  return edit({ kind: 'nap', title: real ? x.label : `Noter la ${x.label.toLowerCase()}`, event: real ? { id: x.id, start: x.start, end: x.end_real ? x.end : '' } : null, defaults: { start: x.start } })
+}
+// Toucher le cadran : la sieste, le soleil ou la lune ouvrent la même correction que leur ligne dans la frise
+const pickOn = (items, edit) => (kind, idx) => {
+  const x = items.find(i => i.type === kind && (kind !== 'nap' || i.idx === idx))
+  if (x) editItem(edit, x)
+}
+
 // Frise : une ligne par fait, l'heure à gauche, la durée à droite, l'éveil entre deux lignes
 function Timeline({ items, edit, live }) {
   const bed = items.find(x => x.type === 'bed')
@@ -221,7 +234,7 @@ function Timeline({ items, edit, live }) {
         if (x.type === 'gap') return <div key={i} className="tl-gap">{x.text}</div>
         if (x.type === 'wake') return (
           <Row key={i} time={x.time} dot="sun" plan={!x.real} title={<>Lever{!x.real && <span className="badge todo">à noter</span>}</>}
-            onClick={() => edit({ kind: 'wake', event: x.real ? { id: x.id, start: x.time } : null, defaults: { start: x.time } })} />
+            onClick={() => editItem(edit, x)} />
         )
         if (x.type === 'nap') {
           const real = x.start_real
@@ -229,14 +242,14 @@ function Timeline({ items, edit, live }) {
             <Row key={i} time={x.start} dot="moon" plan={!real} now={x.now}
               title={<>{x.label}{real && !x.end_real && <span className="badge">en cours</span>}{!real && x.now && <span className="badge">maintenant</span>}</>}
               right={real && !x.end_real ? `réveil ~${x.end}` : x.dur}
-              onClick={() => edit({ kind: 'nap', title: x.label, event: real ? { id: x.id, start: x.start, end: x.end_real ? x.end : '' } : null, defaults: { start: x.start } })} />
+              onClick={() => editItem(edit, x)} />
           )
         }
         if (x.type === 'bed') return (
           <div key={i}>
             <Row time={x.time} dot="bed" plan={!x.real} now={x.now}
               title={<>Coucher{!x.real && x.now && <span className="badge">ensuite</span>}</>}
-              onClick={() => edit({ kind: 'bed', event: x.real ? { id: x.id, start: x.time } : null, defaults: { start: x.time } })} />
+              onClick={() => editItem(edit, x)} />
             {(x.night || []).map((w, j) => (
               <Row key={w.id} time={w.start} dot="eye" small title={`Réveil ${j + 1}`} right={w.end ? w.dur : 'en cours'}
                 onClick={() => edit({ kind: 'night', title: `Réveil nocturne ${j + 1}`, event: { id: w.id, start: w.start, end: w.end || '' } })} />

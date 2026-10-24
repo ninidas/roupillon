@@ -327,7 +327,7 @@ def dial(items, day, feeds, nm, mode) -> dict:
         "wake": wake, "bed": bed, "now": nm, "night": mode == "night",
         "wake_real": items[0]["real"], "bed_real": items[-1]["type"] == "bed" and items[-1]["real"],
         "wake_label": E.fmt(wake), "bed_label": E.fmt(bed),
-        "naps": [{"start": x["start"], "end": x["end"], "start_real": x["start_real"], "end_real": x["end_real"],
+        "naps": [{"idx": x["idx"], "start": x["start"], "end": x["end"], "start_real": x["start_real"], "end_real": x["end_real"],
                   "label": E.fmt(x["start"])} for x in items if x["type"] == "nap"],
         "feeds": [f["t"] for f in feeds if f["t"] is not None],
     }

@@ -49,17 +49,19 @@ function Pill({ a0, a1, cls }) {
   )
 }
 
-function End({ x, y, cls, children }) {
+function End({ x, y, cls, onClick, children }) {
   return (
-    <g className={`end ${cls}`}>
+    <g className={`end ${cls}${onClick ? ' tap' : ''}`} onClick={onClick}>
       <circle cx={x.toFixed(2)} cy={y.toFixed(2)} r={W / 2 + 3} filter="url(#glow)" className="end-halo" />
       <circle cx={x.toFixed(2)} cy={y.toFixed(2)} r={W / 2 - 0.75} className="end-c" />
       <At x={x} y={y} size={19}>{children}</At>
+      {onClick && <circle cx={x.toFixed(2)} cy={y.toFixed(2)} r={W / 2 + 10} className="hit-c" />}
     </g>
   )
 }
 
-export default function Dial({ dial }) {
+export default function Dial({ dial, onPick }) {
+  const tap = (kind, idx) => onPick && { onClick: () => onPick(kind, idx), className: 'tap' }
   const { wake, bed, now, night } = dial
   const span = Math.max(60, bed - wake)
   const A = (t) => -135 + 270 * Math.min(1, Math.max(0, (t - wake) / span))
@@ -85,9 +87,13 @@ export default function Dial({ dial }) {
         const [mx, my] = pol(R, (a0 + (running ? full : a1)) / 2)
         return (
           <g key={i} className="mk-in" style={{ animationDelay: `${120 + i * 110}ms` }}>
+            <g {...tap('nap', x.idx)}>
             {running && <Pill a0={a0} a1={full} cls="plan" />}
             <Pill a0={a0} a1={a1} cls={real ? 'real' : 'plan'} />
             <At x={mx} y={my} size={18}><NapIcon dim={!real} /></At>
+            {/* Zone de toucher un peu plus large que la gélule, pour le pouce */}
+            {onPick && <path d={arc(R, a0, full)} className="hit" strokeWidth={W + 14} />}
+            </g>
           </g>
         )
       })}
@@ -102,8 +108,8 @@ export default function Dial({ dial }) {
         )
       })()}
 
-      <End x={wx} y={wy} cls={`wake${dial.wake_real === false ? ' plan' : ''}`}><WakeIcon /></End>
-      <End x={bx} y={by} cls={`bed${dial.bed_real ? '' : ' plan'}`}><BedIcon /></End>
+      <End x={wx} y={wy} cls={`wake${dial.wake_real === false ? ' plan' : ''}`} onClick={onPick && (() => onPick('wake'))}><WakeIcon /></End>
+      <End x={bx} y={by} cls={`bed${dial.bed_real ? '' : ' plan'}`} onClick={onPick && (() => onPick('bed'))}><BedIcon /></End>
       <text x={wx.toFixed(1)} y={(wy + 36).toFixed(1)} textAnchor="middle" className="dial-end wake-t">{dial.wake_label}</text>
       <text x={bx.toFixed(1)} y={(by + 36).toFixed(1)} textAnchor="middle" className="dial-end bed-t">{dial.bed_real ? '' : 'vers '}{dial.bed_label}</text>
     </svg>

@@ -89,6 +89,10 @@ h1{font-family:var(--round);font-size:34px;font-weight:800;letter-spacing:-.02em
 .glyph{fill:var(--glyph)} .glyph-plan{fill:var(--pill-edge);opacity:.6}
 .feed-dot{fill:var(--feed);opacity:.8}
 .mk-in{animation:mkin .45s ease-out both}
+.tap{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
+.tap:active{opacity:.6}
+.hit{fill:none;stroke:transparent;stroke-linecap:round;pointer-events:stroke}
+.hit-c{fill:transparent}
 .end{color:var(--sun)} .end.bed{color:var(--moon)}
 .end-c{fill:var(--sun-fill);stroke:currentColor;stroke-width:1.5px}
 .end.bed .end-c{fill:var(--moon-fill)}
@@ -98,7 +102,7 @@ h1{font-family:var(--round);font-size:34px;font-weight:800;letter-spacing:-.02em
 .dial-t{font-family:var(--round);font-size:11.5px;font-weight:700;fill:var(--label2);font-variant-numeric:tabular-nums}
 .dial-end{font-family:var(--round);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
 .wake-t{fill:var(--sun)} .bed-t{fill:var(--moon)}
-.center{position:absolute;left:19%;right:19%;top:22%;bottom:24%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;animation:swap .35s ease-out both}
+.center{pointer-events:none;position:absolute;left:19%;right:19%;top:22%;bottom:24%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;animation:swap .35s ease-out both}
 .cap{font-size:15px;font-weight:500;color:var(--indigo);display:flex;align-items:center;gap:6px;justify-content:center}
 .cap svg{width:15px;height:15px}
 .big{font-size:clamp(40px,13vw,54px);font-weight:700;letter-spacing:-.02em;line-height:1.05;margin-top:2px;font-variant-numeric:tabular-nums}
