@@ -290,8 +290,13 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
             hi = open_nap
             p = (nm - open_nap["start"]) / max(1, open_nap["end"] - open_nap["start"])
             label = f"Sieste {open_nap['idx'] + 1}"
-            headline = {"cap": f"{label} en cours", "big": E.fmt(open_nap["end"]), "icon": "moon", "progress": min(1, p),
-                        "sub": f"Réveil estimé · endormie à {E.fmt(open_nap['start'])}, il y a {E.dur(nm - open_nap['start'])}"}
+            if nm < open_nap["end"]:
+                headline = {"cap": f"{label} en cours", "big": E.fmt(open_nap["end"]), "icon": "moon", "progress": min(1, p),
+                            "sub": f"Réveil estimé · endormie à {E.fmt(open_nap['start'])}, il y a {E.dur(nm - open_nap['start'])}"}
+            else:
+                # Plus longue que prévu : l'heure estimée est passée, on montre depuis combien de temps elle dort
+                headline = {"cap": f"{label} en cours", "big": E.dur(nm - open_nap["start"]), "icon": "moon", "progress": 1,
+                            "sub": f"Endormie à {E.fmt(open_nap['start'])} · réveil estimé vers {E.fmt(open_nap['end'])}"}
             widget = {"state": "nap", "title": f"{label} en cours", "line": f"réveil vers {E.fmt(open_nap['end'])}",
                       "since": iso(at(d, open_nap["start"])), "target": iso(at(d, open_nap["end"])), "progress": min(1, p)}
         elif due:
