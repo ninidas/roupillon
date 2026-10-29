@@ -4,8 +4,8 @@
   <img src="docs/logo.png" alt="Roupillon" width="120" />
 </p>
 
-**Suivi et prévision des siestes de bébé, à héberger soi-même.**
-*Self-hosted baby nap tracker that predicts the next nap.*
+**Self-hosted baby nap tracker that predicts the next nap.**
+*Suivi et prévision des siestes de bébé, à héberger soi-même.*
 
 <p align="center">
   <img src="docs/roupillon-today.png" alt="Aujourd'hui / Today" width="24%" />
@@ -14,114 +14,7 @@
   <img src="docs/roupillon-night.png" alt="Cette nuit / Tonight" width="24%" />
 </p>
 
-[Français](#français) · [English](#english)
-
----
-
-## Français
-
-*Roupillon* veut dire « petite sieste » en français familier.
-
-Roupillon est une petite appli web pour téléphone, pensée pour deux parents. On note d'un toucher quand bébé s'endort, se réveille ou boit un biberon. L'appli prévoit la prochaine sieste et l'heure du coucher.
-
-### Ce qu'elle fait
-
-#### La journée
-- **Un cadran de la journée** : du lever au coucher, siestes faites et prévues, biberons et heure qu'il est
-- **Un toucher pour noter** : endormi, réveillé, biberon ; on touche une sieste ou un biberon pour corriger l'heure
-- **La nuit** : après le coucher, écran tamisé aux couleurs chaudes, durée de la nuit et réveils nocturnes
-
-#### Les prévisions
-- **Selon l'âge exact** : les repères de départ suivent l'âge du bébé, au jour près
-- **Qui apprennent** : elles s'ajustent à ses deux dernières semaines (temps d'éveil et durée de chaque sieste, dernier éveil, heure du coucher)
-- **Les biberons** : total de lait du jour et heure du prochain biberon, sans en annoncer la nuit
-
-#### Le suivi
-- **Un journal** : les 30 derniers jours, le sommeil sur 14 jours face au repère de son âge
-- **La croissance** : pesées placées sur les courbes de l'OMS (0 à 2 ans, fille ou garçon)
-- **Un repère de lait** selon le poids jusqu'à 6 mois, donné comme un simple ordre de grandeur
-
-#### À deux
-- **Un compte par parent** : chacun voit ce que l'autre a noté dès qu'il ouvre l'appli
-- **iPhone** : widget d'écran verrouillé (avec l'app Scriptable) et raccourcis Siri pour noter sans ouvrir l'appli
-
-#### Appli et sécurité
-- **PWA** : s'installe sur l'écran d'accueil du téléphone
-- **Hors connexion** : les gestes sont gardés sur le téléphone avec leur heure réelle, puis envoyés au retour du réseau
-- **Deux thèmes** : bleu nuit, ou clair et sombre selon le téléphone
-- **Changement d'heure** pris en compte
-- **Sauvegarde** de la base chaque nuit (7 gardées)
-- **Connexion protégée** : essais limités, mot de passe de 12 caractères au moins
-- **Installation guidée** : aucun fichier de configuration, il suffit d'ouvrir l'appli
-
-L'appli est en français uniquement.
-
-### Installation
-
-#### 1. Construire l'image
-
-Il faut Docker. L'image se construit depuis ce dépôt :
-
-```sh
-git clone https://github.com/ninidas/roupillon.git
-cd roupillon
-docker build -t roupillon:latest .
-```
-
-#### 2. Créer un `docker-compose.yml`
-
-```yaml
-services:
-  roupillon:
-    image: roupillon:latest
-    container_name: roupillon
-    restart: unless-stopped
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Paris
-      - APP_TZ=Europe/Paris
-    volumes:
-      - ./data:/data
-    ports:
-      - "8000:8000"
-```
-
-Puis `docker compose up -d`.
-
-#### 3. Premier lancement
-
-Ouvrez `http://<votre-serveur>:8000` sur le téléphone. L'appli demande le prénom et la date de naissance du bébé, puis un ou deux comptes de parents. Sur iPhone, *Partager* puis *Sur l'écran d'accueil* l'installe comme une vraie appli.
-
-Pour y accéder hors de chez vous, placez-la derrière un proxy inverse en HTTPS ou un VPN.
-
-### Widget et Siri
-
-Dans *Réglages*, créez votre clé personnelle. L'appli donne alors le script du widget à coller dans Scriptable et explique les raccourcis Siri. Ceux-ci appellent `/api/quick/toggle` (sieste qui commence ou s'arrête) et `/api/quick/feed` (biberon), avec la clé dans l'en-tête `X-Roupillon-Key`.
-
-### Réglages
-
-Toutes les variables sont facultatives.
-
-| Variable | Par défaut | Rôle |
-| --- | --- | --- |
-| `DB_PATH` | `/data/roupillon.db` | Emplacement de la base SQLite |
-| `APP_TZ` | `Europe/Paris` | Fuseau horaire des journées |
-| `SECRET_KEY` | générée et gardée en base | Clé de signature des sessions |
-| `TRUSTED_PROXIES` | adresses privées | Proxys dont on croit l'adresse transmise |
-| `NIGHTLY_BACKUP` | `1` | `0` désactive la copie de la base chaque nuit dans `/data/backup` |
-| `PUID` / `PGID` | `0` | Utilisateur propriétaire de `/data` |
-
-### Développement
-
-```sh
-docker compose -f docker-compose.dev.yml up -d --build    # http://127.0.0.1:8007
-docker run --rm --tmpfs /data --entrypoint sh roupillon:dev -c 'python -m pytest -q tests'
-```
-
-### Avertissement
-
-Roupillon aide à s'organiser ; ce n'est pas un avis médical. Les repères de sommeil et de lait sont des moyennes, et chaque bébé a son rythme. En cas de doute, demandez à votre pédiatre.
+[English](#english) · [Français](#français)
 
 ---
 
@@ -165,9 +58,40 @@ Roupillon is a small mobile web app for two parents. One tap logs when the baby 
 
 ### Quick Start
 
-1. Build the image: `git clone https://github.com/ninidas/roupillon.git && cd roupillon && docker build -t roupillon:latest .`
-2. Use the `docker-compose.yml` from the French section above, then run `docker compose up -d`.
-3. Open `http://<your-server>:8000` on your phone. The app asks for the baby's first name and birth date, then one or two parent accounts. On iPhone, *Share* then *Add to Home Screen* installs it like a native app.
+#### 1. Build the image
+
+You need Docker. The image is built from this repository:
+
+```sh
+git clone https://github.com/ninidas/roupillon.git
+cd roupillon
+docker build -t roupillon:latest .
+```
+
+#### 2. Create a `docker-compose.yml`
+
+```yaml
+services:
+  roupillon:
+    image: roupillon:latest
+    container_name: roupillon
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Paris
+      - APP_TZ=Europe/Paris
+    volumes:
+      - ./data:/data
+    ports:
+      - "8000:8000"
+```
+
+Then run `docker compose up -d`.
+
+#### 3. First run
+
+Open `http://<your-server>:8000` on your phone. The app asks for the baby's first name and birth date, then one or two parent accounts. On iPhone, *Share* then *Add to Home Screen* installs it like a native app.
 
 To reach it away from home, put it behind an HTTPS reverse proxy or a VPN.
 
@@ -177,11 +101,87 @@ In *Réglages* (Settings), create your personal key. The app then gives you the 
 
 ### Configuration
 
-All variables are optional; see the table in the French section (`DB_PATH`, `APP_TZ`, `SECRET_KEY`, `TRUSTED_PROXIES`, `NIGHTLY_BACKUP`, `PUID`/`PGID`).
+All variables are optional.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DB_PATH` | `/data/roupillon.db` | SQLite database location |
+| `APP_TZ` | `Europe/Paris` | Time zone used for days |
+| `SECRET_KEY` | generated and stored in the database | Session signing key |
+| `TRUSTED_PROXIES` | private addresses | Proxies whose forwarded address is trusted |
+| `NIGHTLY_BACKUP` | `1` | `0` turns off the nightly database copy to `/data/backup` |
+| `PUID` / `PGID` | `0` | Owner of `/data` |
+
+### Development
+
+```sh
+docker compose -f docker-compose.dev.yml up -d --build    # http://127.0.0.1:8007
+docker run --rm --tmpfs /data --entrypoint sh roupillon:dev -c 'python -m pytest -q tests'
+```
 
 ### Disclaimer
 
 Roupillon helps you get organized; it is not medical advice. Sleep and milk guides are averages, and every baby has their own rhythm. If in doubt, ask your pediatrician.
+
+---
+
+## Français
+
+*Roupillon* veut dire « petite sieste » en français familier.
+
+Roupillon est une petite appli web pour téléphone, pensée pour deux parents. On note d'un toucher quand bébé s'endort, se réveille ou boit un biberon. L'appli prévoit la prochaine sieste et l'heure du coucher.
+
+### Ce qu'elle fait
+
+#### La journée
+- **Un cadran de la journée** : du lever au coucher, siestes faites et prévues, biberons et heure qu'il est
+- **Un toucher pour noter** : endormi, réveillé, biberon ; on touche une sieste ou un biberon pour corriger l'heure
+- **La nuit** : après le coucher, écran tamisé aux couleurs chaudes, durée de la nuit et réveils nocturnes
+
+#### Les prévisions
+- **Selon l'âge exact** : les repères de départ suivent l'âge du bébé, au jour près
+- **Qui apprennent** : elles s'ajustent à ses deux dernières semaines (temps d'éveil et durée de chaque sieste, dernier éveil, heure du coucher)
+- **Les biberons** : total de lait du jour et heure du prochain biberon, sans en annoncer la nuit
+
+#### Le suivi
+- **Un journal** : les 30 derniers jours, le sommeil sur 14 jours face au repère de son âge
+- **La croissance** : pesées placées sur les courbes de l'OMS (0 à 2 ans, fille ou garçon)
+- **Un repère de lait** selon le poids jusqu'à 6 mois, donné comme un simple ordre de grandeur
+
+#### À deux
+- **Un compte par parent** : chacun voit ce que l'autre a noté dès qu'il ouvre l'appli
+- **iPhone** : widget d'écran verrouillé (avec l'app Scriptable) et raccourcis Siri pour noter sans ouvrir l'appli
+
+#### Appli et sécurité
+- **PWA** : s'installe sur l'écran d'accueil du téléphone
+- **Hors connexion** : les gestes sont gardés sur le téléphone avec leur heure réelle, puis envoyés au retour du réseau
+- **Deux thèmes** : bleu nuit, ou clair et sombre selon le téléphone
+- **Changement d'heure** pris en compte
+- **Sauvegarde** de la base chaque nuit (7 gardées)
+- **Connexion protégée** : essais limités, mot de passe de 12 caractères au moins
+- **Installation guidée** : aucun fichier de configuration, il suffit d'ouvrir l'appli
+
+L'appli est en français uniquement.
+
+### Installation
+
+Il faut Docker. Construisez l'image depuis ce dépôt, puis lancez-la avec le `docker-compose.yml` de la [partie anglaise](#quick-start) (`docker compose up -d`).
+
+Ouvrez ensuite `http://<votre-serveur>:8000` sur le téléphone. L'appli demande le prénom et la date de naissance du bébé, puis un ou deux comptes de parents. Sur iPhone, *Partager* puis *Sur l'écran d'accueil* l'installe comme une vraie appli.
+
+Pour y accéder hors de chez vous, placez-la derrière un proxy inverse en HTTPS ou un VPN.
+
+### Widget et Siri
+
+Dans *Réglages*, créez votre clé personnelle. L'appli donne alors le script du widget à coller dans Scriptable et explique les raccourcis Siri. Ceux-ci appellent `/api/quick/toggle` (sieste qui commence ou s'arrête) et `/api/quick/feed` (biberon), avec la clé dans l'en-tête `X-Roupillon-Key`.
+
+### Réglages
+
+Toutes les variables sont facultatives ; voir le tableau de la [partie anglaise](#configuration).
+
+### Avertissement
+
+Roupillon aide à s'organiser ; ce n'est pas un avis médical. Les repères de sommeil et de lait sont des moyennes, et chaque bébé a son rythme. En cas de doute, demandez à votre pédiatre.
 
 ---
 
