@@ -106,14 +106,7 @@ function CurrentDay({ t, night, onAct, busy, doneAt, edit, showDay, setShowDay, 
 
   return (
     <>
-      {night ? (
-        // La nuit, l'essentiel seulement : depuis quand elle dort, ses réveils
-        <section className="night-hero" aria-live="polite">
-          <div className="cap">{HeadIcon && <HeadIcon />}{H.cap}</div>
-          <div className="big rd">{H.big}</div>
-          <div className="sub">{H.sub}</div>
-        </section>
-      ) : !started ? (
+      {!started ? (
         <section className="hello">
           <span className="hello-i"><Sun /></span>
           <h2 className="rd">Sa journée n'a pas commencé</h2>
@@ -123,6 +116,7 @@ function CurrentDay({ t, night, onAct, busy, doneAt, edit, showDay, setShowDay, 
           <p className="hello-s">Au début, les prévisions suivent les repères de son âge. Elles s'adaptent ensuite à elle, au fil des journées notées.</p>
         </section>
       ) : (
+        // La nuit aussi, le cadran de la journée reste là ; au centre, depuis quand elle dort
         <section className="dial-wrap" aria-live="polite">
           <Dial dial={t.dial} onPick={pickOn(t.timeline, edit, t.feeds)} />
           <div className="center">

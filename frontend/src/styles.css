@@ -206,10 +206,7 @@ button.cell:active{background:var(--fill)}
 .addrow{font-size:17px;color:var(--indigo);background:none;border:0;cursor:pointer;padding:14px 16px;width:100%;text-align:left;display:flex;align-items:center;gap:10px;min-height:50px}
 .addrow svg{width:20px;height:20px}
 
-/* Nuit : l'essentiel, en grand */
-.night-hero{display:flex;flex-direction:column;align-items:center;text-align:center;padding:36px 16px 20px}
-.night-hero .big{font-size:clamp(56px,19vw,80px)}
-.night-hero .sub{font-size:15px}
+/* Nuit : la journée repliée sous le cadran */
 .show-day{justify-content:center;font-size:16px;color:var(--label2)}
 .show-day .chev{transform:rotate(90deg)}
 
