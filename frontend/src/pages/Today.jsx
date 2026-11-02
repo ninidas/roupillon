@@ -42,7 +42,7 @@ export default function Today({ today, onAct, open, close, refresh, notify, busy
         {status}
       </header>
 
-      {!night && <WeekStrip current={t.date} sel={sel || t.date} pick={(iso) => setSel(iso === t.date ? null : iso)} />}
+      <WeekStrip current={t.date} sel={sel || t.date} pick={(iso) => setSel(iso === t.date ? null : iso)} />
 
       {viewing
         ? <PastDay past={past} edit={edit(sel)} openDay={() => open(<DaySheet date={sel} title={past?.label || ''} onClose={() => { close(); loadPast(); refresh() }} open={open} notify={notify} />)} />
