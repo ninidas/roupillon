@@ -40,8 +40,7 @@ body{color:var(--label);font-family:var(--font);font-size:17px;line-height:1.35;
   overscroll-behavior-y:none;-webkit-user-select:none;user-select:none}
 input{-webkit-user-select:text;user-select:text}
 button{font:inherit;color:inherit}
-html,body,#root{height:100%;overflow:hidden}
-.scroller{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none}
+#root{min-height:100dvh}
 .rd{font-family:var(--round)}
 
 .wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:20px;

@@ -34,11 +34,10 @@ export default function App() {
   const [doneAt, setDoneAt] = useState(0)
   const [theme, setThemeState] = useState(ls.get('rp_theme', 'bleu'))
   const toastTimer = useRef()
-  const scroller = useRef()
 
   const setMe = (u) => { setMeState(u); ls.set('rp_me', u) }
   const setTheme = (v) => { setThemeState(v); ls.set('rp_theme', v) }
-  const setTab = (t) => { setTabState(t); ls.set('rp_tab', t); scroller.current?.scrollTo(0, 0) }
+  const setTab = (t) => { setTabState(t); ls.set('rp_tab', t); window.scrollTo(0, 0) }
   const close = useCallback(() => setSheet(null), [])
   const notify = useCallback((msg, actions = []) => {
     clearTimeout(toastTimer.current)
@@ -135,8 +134,8 @@ export default function App() {
 
   const onIn = (u) => { setMe(u); setTab('today'); setPhase('app') }
   if (phase === 'boot') return null
-  if (phase === 'setup') return <main className="scroller"><Setup onDone={onIn} /></main>
-  if (phase === 'login') return <main className="scroller"><Login onDone={onIn} /></main>
+  if (phase === 'setup') return <Setup onDone={onIn} />
+  if (phase === 'login') return <Login onDone={onIn} />
 
   const status = !online
     ? <span className="pill warn">Hors ligne{queued ? ` · ${queued} en attente` : ''}</span>
@@ -145,15 +144,11 @@ export default function App() {
 
   return (
     <>
-      {/* La page défile dans ce cadre, pas le document : sur iPhone, en app d'écran d'accueil,
-          la barre d'onglets fixée en bas se décollait pendant le défilement */}
-      <main className="scroller" ref={scroller}>
       {tab === 'today' && (today
         ? <Today today={today} onAct={onAct} busy={busy} doneAt={doneAt} version={version} {...common} />
         : <div className="wrap"><div className="empty">Chargement...</div></div>)}
       {tab === 'journal' && <Journal version={version} {...common} />}
       {tab === 'settings' && me && <Settings me={me} setMe={setMe} onLogout={logout} theme={theme} setTheme={setTheme} {...common} />}
-      </main>
 
       <nav className="tabbar" aria-label="Onglets">
         {TABS.map(({ id, label, Icon }) => (
