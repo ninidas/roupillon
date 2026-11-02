@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, setToken } from '../api'
 import Sheet, { Confirm } from '../components/Sheet'
+import Notifications from '../components/Notifications'
 import { Check, Chevron, Key, User } from '../components/Icons'
 import widgetTemplate from '../scriptable/roupillon-widget.js?raw'
 
@@ -104,6 +105,8 @@ export default function Settings({ me, setMe, open, close, notify, onLogout, sta
         </section>
       </>}
 
+
+      <Notifications notify={notify} />
 
       <section>
         <h2 className="section-h">Widget et Raccourcis</h2>

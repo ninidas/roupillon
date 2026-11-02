@@ -171,7 +171,7 @@ button.cell:active{background:var(--fill)}
 .icon{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;color:#fff}
 .icon svg{width:18px;height:18px}
 .i-sun{background:var(--orange)} .i-moon{background:var(--action)} .i-bed{background:var(--bedc)} .i-feed{background:var(--feed)}
-.i-eye{background:var(--label2)} .i-key{background:var(--green)} .i-user{background:var(--label2)}
+.i-eye{background:var(--label2)} .i-key{background:var(--green)} .i-user{background:var(--label2)} .i-bell{background:var(--red)}
 .badge{font-size:12px;font-weight:700;color:var(--green);margin-left:6px}
 .badge.todo{color:var(--orange)}
 .empty{padding:16px;color:var(--label2);font-size:15px}

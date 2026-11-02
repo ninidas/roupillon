@@ -26,3 +26,20 @@ self.addEventListener('fetch', (event) => {
     })))
   }
 })
+
+// Notifications envoyées par le serveur (prochaine sieste, biberon, coucher)
+self.addEventListener('push', (event) => {
+  let d = {}
+  try { d = event.data ? event.data.json() : {} } catch { d = { body: event.data && event.data.text() } }
+  event.waitUntil(self.registration.showNotification(d.title || 'Roupillon', {
+    body: d.body || '', tag: d.tag, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', data: { url: '/' },
+  }))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    const open = list.find(c => new URL(c.url).origin === self.location.origin)
+    return open ? open.focus() : self.clients.openWindow('/')
+  }))
+})

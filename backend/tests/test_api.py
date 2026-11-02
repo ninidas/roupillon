@@ -99,7 +99,7 @@ def test_biberon(client, auth, clock):
     clock.set("2026-10-24 09:00")
     fid = act(client, auth, "feed").json()["event_id"]
     t = client.get("/api/today", headers=auth).json()
-    assert t["feed"]["ask_id"] == fid and t["feed"]["last"]["next"] == "12:30"
+    assert t["feed"]["ask_id"] == fid and t["feed"]["last"]["next"] == "12:00"
     client.patch(f"/api/events/{fid}", json={"ml": 120}, headers=auth)
     t = client.get("/api/today", headers=auth).json()
     assert t["feed"]["ask_id"] is None and t["feed"]["ml"] == 120
@@ -242,7 +242,7 @@ def test_pas_de_biberon_annonce_apres_le_coucher(client, auth, clock):
     clock.set("2026-10-24 07:00")
     act(client, auth, "wake")
     clock.set("2026-10-24 10:00")
-    assert act(client, auth, "feed").json()["today"]["feed"]["last"]["next_label"] == "prochain vers 13:30"
+    assert act(client, auth, "feed").json()["today"]["feed"]["last"]["next_label"] == "prochain vers 13:00"
     clock.set("2026-10-24 17:30")
     t = act(client, auth, "feed").json()["today"]
     assert t["feed"]["last"]["next_label"] == "prochain au lever"   # 21:00 tomberait après le coucher prévu

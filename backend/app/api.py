@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from . import actions as A
 from . import engine as E
 from . import models
+from . import push as P
 from . import service as S
 from .auth import (burn_password_check, create_token, current_user, hash_password, key_hash, new_widget_key,
                    password_problem, verify_password, widget_user)
@@ -379,6 +380,81 @@ def put_settings(body: SettingsBody, user: models.User = Depends(current_user), 
         S.set_setting(db, "sex", body.sex)
     db.commit()
     return get_settings(user, db)
+
+
+# ---------- notifications ----------
+
+class PushKeys(BaseModel):
+    p256dh: Annotated[str, Field(min_length=10, max_length=200)]
+    auth: Annotated[str, Field(min_length=10, max_length=100)]
+
+
+class PushSubBody(BaseModel):
+    endpoint: Annotated[str, Field(max_length=1000)]
+    keys: PushKeys
+
+
+class PushEndpoint(BaseModel):
+    endpoint: Annotated[str, Field(max_length=1000)]
+
+
+class PushPrefs(BaseModel):
+    nap: bool | None = None
+    feed: bool | None = None
+    bed: bool | None = None
+    lead: Literal[5, 10, 15, 20, 30] | None = None
+
+
+def push_out(db: Session, user: models.User) -> dict:
+    _, pub = P.vapid_keys(db)
+    return {"key": pub, "prefs": P.prefs(db, user.id), "leads": list(P.LEADS),
+            "devices": db.query(models.PushSub).filter_by(user_id=user.id).count()}
+
+
+@router.get("/push")
+def get_push(user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    return push_out(db, user)
+
+
+@router.post("/push/subscribe")
+def push_subscribe(request: Request, body: PushSubBody, user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    if not P.endpoint_ok(body.endpoint):
+        raise HTTPException(status_code=422, detail="Service de notification inconnu")
+    sub = db.query(models.PushSub).filter_by(endpoint=body.endpoint).first()
+    if sub is None:
+        sub = models.PushSub(endpoint=body.endpoint)
+        db.add(sub)
+    sub.user_id, sub.p256dh, sub.auth = user.id, body.keys.p256dh, body.keys.auth
+    # Adresse de l'app, donnée aux services de notification comme contact de l'expéditeur
+    origin = request.headers.get("origin", "")
+    if origin.startswith("https://"):
+        S.set_setting(db, "push_origin", origin)
+    db.commit()
+    return push_out(db, user)
+
+
+@router.post("/push/unsubscribe")
+def push_unsubscribe(body: PushEndpoint, user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    db.query(models.PushSub).filter_by(endpoint=body.endpoint, user_id=user.id).delete()
+    db.commit()
+    return push_out(db, user)
+
+
+@router.put("/push/prefs")
+def push_prefs(body: PushPrefs, user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    P.set_prefs(db, user.id, body.model_dump())
+    db.commit()
+    return push_out(db, user)
+
+
+@router.post("/push/test")
+@limiter.limit("6/minute")
+def push_test(request: Request, user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    name = S.settings(db)["child_name"]
+    n = P.send_user(db, user.id, {"title": f"{name} : notification d'essai", "body": "Les notifications arrivent bien sur ce téléphone.", "tag": "test"})
+    if not n:
+        raise HTTPException(status_code=502, detail="Aucun téléphone n'a reçu l'essai, réactivez les notifications")
+    return {"sent": n}
 
 
 # ---------- widget Scriptable et Raccourcis iPhone ----------

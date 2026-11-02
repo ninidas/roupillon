@@ -6,6 +6,7 @@ _tmp = tempfile.mkdtemp()
 os.environ["DB_PATH"] = os.path.join(_tmp, "test.db")
 os.environ["SECRET_KEY"] = "test-secret"
 os.environ["NIGHTLY_BACKUP"] = "0"
+os.environ["PUSH_LOOP"] = "0"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

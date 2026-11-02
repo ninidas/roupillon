@@ -52,3 +52,21 @@ class Weight(Base):
     grams = Column(Integer, nullable=False)
     created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PushSub(Base):
+    """Un téléphone abonné aux notifications (une ligne par appareil et par parent)."""
+    __tablename__ = "push_subs"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    endpoint = Column(String, nullable=False, unique=True)
+    p256dh = Column(String, nullable=False)
+    auth = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PushSent(Base):
+    """Notifications déjà envoyées, pour n'annoncer chaque sieste ou biberon qu'une fois. Gardées 3 jours."""
+    __tablename__ = "push_sent"
+    key = Column(String, primary_key=True)
+    at = Column(DateTime, nullable=False)

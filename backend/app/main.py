@@ -7,6 +7,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from . import backup
+from . import push
 from . import models  # noqa: F401  (tables)
 from .api import router
 from .database import Base, engine, migrate
@@ -15,6 +16,7 @@ from .limiter import limiter
 Base.metadata.create_all(bind=engine)
 migrate()
 backup.start()
+push.start()
 
 app = FastAPI(title="Roupillon", docs_url=None, redoc_url=None, openapi_url=None)
 app.state.limiter = limiter
