@@ -166,6 +166,8 @@ function CurrentDay({ t, night, onAct, busy, doneAt, edit, showDay, setShowDay, 
         </div>
       )}
 
+      {t.feeds.length > 0 && (!night || showDay) && <Feeds feeds={t.feeds} edit={edit} />}
+
       {night && wakes.length > 0 && (
         <section>
           <h2 className="section-h">Réveils de la nuit</h2>
@@ -213,6 +215,7 @@ function PastDay({ past, edit, openDay }) {
         <h2 className="section-h">Journée</h2>
         <Timeline items={past.timeline} edit={edit} />
       </section>
+      <Feeds feeds={past.feeds} edit={edit} />
     </>
   )
 }
@@ -232,6 +235,23 @@ const pickOn = (items, edit, feeds = []) => (kind, idx) => {
   }
   const x = items.find(i => i.type === kind && (kind !== 'nap' || i.idx === idx))
   if (x) editItem(edit, x)
+}
+
+// Biberons de la journée : l'heure et la quantité, touchez une ligne pour corriger l'une ou l'autre
+function Feeds({ feeds, edit }) {
+  return (
+    <section>
+      <h2 className="section-h">Biberons</h2>
+      <div className="tl">
+        {feeds.map(f => (
+          <Row key={f.id} time={f.time} dot="feed" title="Biberon"
+            right={f.ml ? `${f.ml}\u00a0ml` : <span className="badge todo">quantité ?</span>}
+            onClick={() => edit({ kind: 'feed', event: { id: f.id, start: f.time, ml: f.ml } })} />
+        ))}
+        <button type="button" className="addrow tl-add" onClick={() => edit({ kind: 'feed', event: null })}><Plus />Biberon oublié</button>
+      </div>
+    </section>
+  )
 }
 
 // Frise : une ligne par fait, l'heure à gauche, la durée à droite, l'éveil entre deux lignes

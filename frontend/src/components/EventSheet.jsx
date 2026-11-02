@@ -28,6 +28,7 @@ export default function EventSheet({ kind, day, event, title, defaults = {}, onC
   const span = kind === 'nap' || kind === 'night'
   const [field, setField] = useState('start')   // l'heure que la roue modifie
   const pickEnd = () => { if (!end) setEnd(nowHM()); setField('end') }
+  const stepMl = (d) => setMl(v => Math.max(0, Math.min(400, (Number(v) || 0) + d)))
 
   async function save() {
     if (!start) { setErr("Indiquez l'heure"); return }
@@ -78,9 +79,17 @@ export default function EventSheet({ kind, day, event, title, defaults = {}, onC
           <div className="quick">
             {ML.map(v => <button key={v} type="button" aria-pressed={Number(ml) === v} onClick={() => setMl(v)}>{v} ml</button>)}
           </div>
-          <label className="field">Autre quantité (ml)
-            <input type="number" id="ev-ml" inputMode="numeric" min="0" max="400" step="5" value={ml} onChange={e => setMl(e.target.value)} placeholder="Non noté" />
-          </label>
+          {/* Elle n'a pas tout bu : on part du biberon préparé et on retire 10 ml par touche */}
+          <div className="field">Quantité prise
+            <div className="ml-step">
+              <button type="button" aria-label="10 ml de moins" onClick={() => stepMl(-10)}>−10</button>
+              <label className="ml-val">
+                <input type="number" id="ev-ml" inputMode="numeric" min="0" max="400" step="5" value={ml} onChange={e => setMl(e.target.value)} placeholder="Non noté" aria-label="Quantité prise en ml" />
+                <span>ml</span>
+              </label>
+              <button type="button" aria-label="10 ml de plus" onClick={() => stepMl(10)}>+10</button>
+            </div>
+          </div>
         </>
       )}
       {err && <p className="err">{err}</p>}
