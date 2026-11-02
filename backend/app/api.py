@@ -463,8 +463,12 @@ def push_test(request: Request, user: models.User = Depends(current_user), db: S
 @limiter.limit("60/minute")
 def quick_status(request: Request, user: models.User = Depends(widget_user), db: Session = Depends(get_db)):
     v = S.today_view(db)
-    return v["widget"] | {"child": v["child"]["name"], "now": v["now_iso"], "headline": v["headline"],
-                          "feed": v["feed"]["last"]}
+    # Le menu du widget affiche headline.sub : pendant une sieste, on y remet l'heure de réveil,
+    # qui sur l'écran de l'app est au-dessus, en grand
+    w = dict(v["widget"])
+    msg = w.pop("message", None)
+    head = v["headline"] | {"sub": msg} if msg else v["headline"]
+    return w | {"child": v["child"]["name"], "now": v["now_iso"], "headline": head, "feed": v["feed"]["last"]}
 
 
 def quick_reply(request: Request, message: str):

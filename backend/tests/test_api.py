@@ -115,7 +115,10 @@ def test_widget_et_raccourcis(client, auth, clock):
     assert s["state"] == "awake" and s["target"].startswith("2026-10-24T")
     assert client.post("/api/quick/toggle", headers=k).json()["message"] == "Sieste 1 commencée à 08:00"
     clock.set("2026-10-24 08:45")
-    assert client.get("/api/quick/status", headers=k).json()["state"] == "nap"
+    s = client.get("/api/quick/status", headers=k).json()
+    # l'app met « Réveil estimé » au-dessus de l'heure ; le menu du widget garde l'heure dans son message
+    assert s["state"] == "nap" and s["headline"]["sub"].startswith("Réveil estimé vers ") and "message" not in s
+    assert client.get("/api/today", headers=auth).json()["headline"]["cap"] == "Réveil estimé"
     assert client.post("/api/quick/toggle", headers=k).json()["message"].startswith("Sieste 1 terminée")
     # une nouvelle clé remplace l'ancienne
     client.post("/api/me/widget-key", headers=auth)
