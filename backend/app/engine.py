@@ -16,7 +16,7 @@ AGE_BY_ID = {a["id"]: a for a in AGES}
 DEFAULT_WAKE = 7 * 60
 SHORT_NAP = 45      # en dessous, l'éveil suivant est raccourci
 CUT = 12            # de combien
-FEED_INTERVAL = 210  # écart habituel entre deux biberons
+FEED_INTERVAL = 180  # écart habituel entre deux biberons (3 h : lever 7 h, coucher 19 h, 5 biberons)
 # Repère de lait sur une journée, jusqu'à 6 mois : autour de 150 ml par kilo (130 à 170 ici),
 # sans dépasser environ un litre. Un ordre de grandeur, jamais une quantité à atteindre.
 MILK_PER_KG = (130, 170)
