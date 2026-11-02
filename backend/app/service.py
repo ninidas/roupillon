@@ -406,6 +406,7 @@ def timeline(items, day, hi, nm) -> list[dict]:
             out.append({"type": "nap", "id": x["id"], "idx": x["idx"], "label": f"Sieste {x['idx'] + 1}",
                         "start": E.fmt(x["start"]), "end": E.fmt(x["end"]), "dur": E.dur(x["end"] - x["start"]),
                         "start_real": x["start_real"], "end_real": x["end_real"], "now": x is hi,
+                        "due": not x["start_real"] and x["start"] <= nm,
                         "past": not x["start_real"] and x["end"] <= nm})
         elif x["type"] == "bed":
             out.append({"type": "bed", "id": x["id"], "time": E.fmt(x["start"]), "real": x["real"], "late": x["late"],

@@ -249,7 +249,7 @@ function Timeline({ items, edit, live }) {
           const real = x.start_real
           return (
             <Row key={i} time={x.start} dot="moon" plan={!real} now={x.now}
-              title={<>{x.label}{real && !x.end_real && <span className="badge">en cours</span>}{!real && x.now && <span className="badge">maintenant</span>}</>}
+              title={<>{x.label}{real && !x.end_real && <span className="badge">en cours</span>}{!real && x.now && <span className="badge">{x.due ? 'maintenant' : 'ensuite'}</span>}</>}
               right={real && !x.end_real ? `réveil ~${x.end}` : x.dur}
               onClick={() => editItem(edit, x)} />
           )
