@@ -152,6 +152,9 @@ h1{font-family:var(--round);font-size:34px;font-weight:800;letter-spacing:-.02em
 .feedline .grow span{font-size:13px;color:var(--label2)}
 .feedbtn{border:0;border-radius:14px;min-height:44px;padding:0 14px;background:var(--fill);color:var(--label);font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;flex:none}
 .feedbtn svg{width:16px;height:16px}
+.feedbtn.accent{background:var(--nap-tint);color:var(--indigo)}
+.section-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 8px}
+.section-row .section-h{margin:0 0 0 6px}
 
 .feed-ref{margin:-10px 8px 0;font-size:13px;line-height:1.4;color:var(--label2);font-variant-numeric:tabular-nums;text-wrap:pretty}
 

@@ -13,22 +13,24 @@ export default function Growth({ open, close, notify, version }) {
   if (!g) return null
   return (
     <section>
-      <h2 className="section-h">Croissance</h2>
+      <div className="section-row">
+        <h2 className="section-h">Croissance</h2>
+        <button type="button" className="feedbtn accent" onClick={() => open(<WeightSheet onClose={close} onDone={done} />)}><Plus />Pesée</button>
+      </div>
       <div className="group chart-card">
         <WeightChart g={g} />
         {g.curves
           ? <div className="legend"><span><i className="lg-band" />Courbes 3 à 97 de l'OMS</span><span><i className="lg-mid" />Médiane</span><span><i className="lg-dot" />Ses pesées</span></div>
           : <p className="foot" style={{ margin: '4px 6px 0' }}>Indiquez fille ou garçon dans Réglages pour voir les courbes de l'OMS.</p>}
       </div>
-      <div className="group" style={{ marginTop: 10 }}>
+      {g.weights.length > 0 && <div className="group" style={{ marginTop: 10 }}>
         {g.weights.slice(0, 6).map(w => (
           <button key={w.id} type="button" className="cell" onClick={() => open(<WeightDetail w={w} onClose={close} onDone={done} />)}>
             <span className="grow"><span className="ttl rd" style={{ fontWeight: 600 }}>{w.kg} kg</span><span className="sub2" style={{ display: 'block' }}>{w.label}</span></span>
             {w.gain && <span className="val">{w.gain}</span>}
           </button>
         ))}
-        <button type="button" className="addrow" onClick={() => open(<WeightSheet onClose={close} onDone={done} />)}><Plus />Ajouter une pesée</button>
-      </div>
+      </div>}
       <p className="foot">
         La plupart des bébés se situent entre les courbes 3 et 97 ; le pédiatre regarde surtout si elle suit régulièrement la sienne.
         {g.milk ? ` D'après sa dernière pesée, les bébés de son âge boivent ${g.milk.label}, un simple ordre de grandeur : chaque bébé règle son appétit.` : ''}
