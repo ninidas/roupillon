@@ -65,6 +65,26 @@ function timerRow(stack, c, size, color) {
   }
 }
 
+// Dernière ligne : la précision à gauche, l'heure de la dernière mise à jour à droite.
+// iOS décide seul quand le widget se rafraîchit (souvent 15 à 25 min) : on voit ainsi d'où datent les données.
+function noteRow(stack, text, data, size, color) {
+  const row = stack.addStack()
+  row.centerAlignContent()
+  const n = row.addText(text || "")
+  n.font = Font.systemFont(size)
+  n.textColor = color
+  n.textOpacity = 0.75
+  n.lineLimit = 1
+  const at = toDate(data.now)
+  if (!at) return
+  row.addSpacer()
+  const t = row.addText("à jour " + hm(at))
+  t.font = Font.systemFont(size - 1.5)
+  t.textColor = color
+  t.textOpacity = 0.55
+  t.lineLimit = 1
+}
+
 function ring(progress, asleepNow) {
   const size = 100, ctx = new DrawContext()
   ctx.size = new Size(size, size)
@@ -133,10 +153,7 @@ async function buildWidget() {
     t.lineLimit = 1
     t.minimumScaleFactor = 0.7
     timerRow(w, c, 17, Color.white())
-    const n = w.addText((stale ? "hors ligne · " : "") + (c.note || ""))
-    n.font = Font.systemFont(12)
-    n.textOpacity = 0.75
-    n.lineLimit = 1
+    noteRow(w, (stale ? "hors ligne · " : "") + (c.note || ""), data, 12, Color.white())
     return w
   }
 
@@ -166,11 +183,7 @@ async function buildWidget() {
   w.addSpacer(4)
   timerRow(w, c, family === "small" ? 22 : 28, Color.white())
   w.addSpacer()
-  const n = w.addText((stale ? "hors ligne · " : "") + (c.note || ""))
-  n.font = Font.systemFont(13)
-  n.textColor = Color.white()
-  n.textOpacity = 0.8
-  n.lineLimit = 2
+  noteRow(w, (stale ? "hors ligne · " : "") + (c.note || ""), data, 13, Color.white())
   return w
 }
 

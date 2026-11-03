@@ -84,7 +84,7 @@ export default function EventSheet({ kind, day, event, title, defaults = {}, onC
             <div className="ml-step">
               <button type="button" aria-label="10 ml de moins" onClick={() => stepMl(-10)}>−10</button>
               <label className="ml-val">
-                <input type="number" id="ev-ml" inputMode="numeric" min="0" max="400" step="5" value={ml} onChange={e => setMl(e.target.value)} placeholder="Non noté" aria-label="Quantité prise en ml" />
+                <input type="number" id="ev-ml" inputMode="numeric" min="0" max="400" step="1" value={ml} onChange={e => setMl(e.target.value)} placeholder="Non noté" aria-label="Quantité prise en ml" />
                 <span>ml</span>
               </label>
               <button type="button" aria-label="10 ml de plus" onClick={() => stepMl(10)}>+10</button>
@@ -99,17 +99,34 @@ export default function EventSheet({ kind, day, event, title, defaults = {}, onC
   )
 }
 
-// Après « Biberon » : la quantité en un geste
+// Après « Biberon » : la quantité en un geste, ou la quantité exacte qu'elle a bue
 export function FeedAmountSheet({ feed, onClose, onDone }) {
-  async function pick(v) {
-    try { await api(`/events/${feed.id}`, { method: 'PATCH', body: { ml: v } }); onDone(`Biberon de ${feed.time} : ${v} ml`) } catch { onClose() }
+  const [ml, setMl] = useState('')
+  const [busy, setBusy] = useState(false)
+  const stepMl = (d) => setMl(v => Math.max(0, Math.min(400, (Number(v) || 0) + d)))
+  const v = ml === '' ? null : Number(ml)
+  const ok = v !== null && Number.isInteger(v) && v > 0 && v <= 400
+  async function pick(x) {
+    setBusy(true)
+    try { await api(`/events/${feed.id}`, { method: 'PATCH', body: { ml: x } }); onDone(`Biberon de ${feed.time} : ${x} ml`) } catch { onClose() }
   }
   return (
     <Sheet title={`Biberon de ${feed.time}`} onClose={onClose}>
       <p className="sub2" style={{ margin: 0 }}>Quelle quantité ? Vous pourrez aussi la noter plus tard.</p>
       <div className="quick" style={{ gap: 10 }}>
-        {ML.map(v => <button key={v} type="button" style={{ fontSize: 17, padding: '12px 18px' }} onClick={() => pick(v)}>{v} ml</button>)}
+        {ML.map(x => <button key={x} type="button" disabled={busy} style={{ fontSize: 17, padding: '12px 18px' }} onClick={() => pick(x)}>{x} ml</button>)}
       </div>
+      <div className="field">Quantité exacte
+        <div className="ml-step">
+          <button type="button" aria-label="10 ml de moins" onClick={() => stepMl(-10)}>−10</button>
+          <label className="ml-val">
+            <input type="number" id="feed-ml" inputMode="numeric" min="1" max="400" step="1" value={ml} onChange={e => setMl(e.target.value)} placeholder="ex. 170" aria-label="Quantité prise en ml" />
+            <span>ml</span>
+          </label>
+          <button type="button" aria-label="10 ml de plus" onClick={() => stepMl(10)}>+10</button>
+        </div>
+      </div>
+      {ok && <button type="button" className="primary" disabled={busy} onClick={() => pick(v)}>Enregistrer {v} ml</button>}
       <button type="button" className="secondary blue" onClick={onClose}>Plus tard</button>
     </Sheet>
   )
