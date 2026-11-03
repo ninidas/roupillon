@@ -93,6 +93,9 @@ h1{font-family:var(--round);font-size:34px;font-weight:800;letter-spacing:-.02em
 .mk-in{animation:mkin .45s ease-out both}
 .night-slept{fill:none;stroke:var(--pill-fill);stroke-opacity:.3;stroke-linecap:round}
 .pill.wake-pill .pill-shape{fill:var(--moon);stroke:var(--moon)}
+.pill.running .pill-halo{animation:breathe 3.2s ease-in-out infinite}
+.nap-tip{fill:#fff;filter:drop-shadow(0 0 3px var(--now))}
+@media (prefers-reduced-motion:reduce){.pill.running .pill-halo{animation:none}}
 .eye-g{fill:none;stroke:var(--moon-fill);stroke-width:2.4px;stroke-linecap:round;stroke-linejoin:round} .eye-p{fill:var(--moon-fill)}
 /* Bascule entre le cadran de jour et celui de nuit, posée entre les deux bouts de l'anneau */
 .face-sw{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);display:flex;gap:2px;padding:3px;border-radius:999px;background:var(--card)}
@@ -382,6 +385,7 @@ button.cell:active{background:var(--fill)}
 @keyframes up{from{transform:translateY(100%)}to{transform:none}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 @keyframes draw{from{stroke-dashoffset:900}to{stroke-dashoffset:0}}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes mkin{from{opacity:0}to{opacity:1}}
 @keyframes swap{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes pop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}

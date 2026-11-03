@@ -116,7 +116,9 @@ export default function Dial({ dial, onPick }) {
   const { wake, bed, now, night } = dial
   const span = Math.max(60, bed - wake)
   const A = (t) => -135 + 270 * Math.min(1, Math.max(0, (t - wake) / span))
-  const showNow = !night && now >= wake && now <= bed
+  // Pendant une sieste, la tête de la gélule montre l'heure : pas de second point par-dessus
+  const napping = dial.naps.some(x => x.start_real && !x.end_real)
+  const showNow = !night && !napping && now >= wake && now <= bed
   const [wx, wy] = pol(R, -135), [bx, by] = pol(R, 135)
 
   return (
@@ -131,12 +133,17 @@ export default function Dial({ dial, onPick }) {
         const real = x.start_real
         const running = real && !x.end_real
         const a1 = running ? Math.max(a0, A(Math.min(Math.max(now, x.start), x.end))) : full
-        const [mx, my] = pol(R, (a0 + (running ? full : a1)) / 2)
+        // Sieste en cours : la partie dormie se remplit jusqu'à maintenant, la suite reste en pointillés
+        // jusqu'au réveil estimé. L'icône se pose dans la partie la plus longue, pour ne pas croiser la tête.
+        const ia = !running ? (a0 + a1) / 2 : a1 - a0 >= full - a1 ? (a0 + a1) / 2 : (a1 + full) / 2
+        const [mx, my] = pol(R, ia)
+        const [tx, ty] = pol(R, a1)
         return (
           <g key={i} className="mk-in" style={{ animationDelay: `${120 + i * 110}ms` }}>
             <g {...tap('nap', x.idx)}>
             {running && <Pill a0={a0} a1={full} cls="plan" />}
-            <Pill a0={a0} a1={a1} cls={real ? 'real' : 'plan'} />
+            <Pill a0={a0} a1={a1} cls={`${real ? 'real' : 'plan'}${running ? ' running' : ''}`} />
+            {running && <circle cx={tx.toFixed(2)} cy={ty.toFixed(2)} r={4} className="nap-tip" />}
             <At x={mx} y={my} size={18}><NapIcon dim={!real} /></At>
             {/* Zone de toucher un peu plus large que la gélule, pour le pouce */}
             {onPick && <path d={arc(R, a0, full)} className="hit" strokeWidth={W + 14} />}
