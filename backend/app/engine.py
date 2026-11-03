@@ -191,6 +191,7 @@ def stats(day: Day) -> dict:
 # les jours récents comptent davantage, et tant qu'il y a peu de journées on reste près des repères.
 LEARN_DAYS = 14
 DECAY = 0.85        # poids d'une journée : x0,85 par jour d'ancienneté
+FIRST_HI = 1.2      # plafond du premier éveil, plus serré que les autres (1,4)
 PRIOR = 2           # les repères valent 2 journées : 1 journée réelle pèse 1/3, 4 en pèsent 2/3
 NAP_MIN, NAP_MAX = 10, 240   # durées retenues pour apprendre (hors oublis et erreurs de saisie)
 
@@ -250,12 +251,12 @@ def morning_wake(hab: dict) -> float:
     return DEFAULT_WAKE + max(-90, min(90, (med - DEFAULT_WAKE) * n / (n + PRIOR)))
 
 
-def _blend(ref: float, h) -> float:
+def _blend(ref: float, h, hi: float = 1.4) -> float:
     if not h:
         return ref
     med, n = h
     v = ref + (med - ref) * n / (n + PRIOR)
-    return max(ref * 0.7, min(ref * 1.4, v))
+    return max(ref * 0.7, min(ref * hi, v))
 
 
 def _hab(hab: dict, key: str, i: int):
@@ -264,8 +265,8 @@ def _hab(hab: dict, key: str, i: int):
 
 
 def window(age: dict, hab: dict, i: int) -> float:
-    """Éveil prévu avant la sieste i (rang 0 = première)."""
-    return _blend(default_window(age, i), _hab(hab, "wins", i))
+    """Éveil prévu avant la sieste i (rang 0 = première). Celui du matin reste court : au plus 120 % du repère."""
+    return _blend(default_window(age, i), _hab(hab, "wins", i), FIRST_HI if i == 0 else 1.4)
 
 
 def nap_length(age: dict, hab: dict, i: int) -> float:

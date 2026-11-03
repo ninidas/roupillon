@@ -40,7 +40,10 @@ def test_habitudes_prudentes():
     assert E.nap_length(AGE, hab, 0) == 60
     # sans journée, les repères tels quels ; une valeur extrême est bornée
     assert E.window(AGE, {}, 0) == AGE["f"]
-    assert E.window(AGE, {"wins": [(300, 50)]}, 0) == AGE["f"] * 1.4
+    assert E.window(AGE, {"wins": [None, (300, 50)]}, 1) == E.default_window(AGE, 1) * 1.4
+    # le premier éveil, lui, reste court : au plus 120 % du repère
+    assert E.window(AGE, {"wins": [(300, 50)]}, 0) == AGE["f"] * 1.2
+    assert E.window(AGE, {"wins": [(30, 50)]}, 0) == AGE["f"] * 0.7
 
 
 def test_nuit_retire_les_reveils():
