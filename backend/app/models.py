@@ -54,6 +54,16 @@ class Weight(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class Height(Base):
+    """Une mesure de la taille (couchée, chez le pédiatre), en millimètres. Seulement pour la courbe."""
+    __tablename__ = "heights"
+    id = Column(Integer, primary_key=True)
+    day = Column(String, nullable=False, index=True)    # AAAA-MM-JJ
+    mm = Column(Integer, nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class PushSub(Base):
     """Un téléphone abonné aux notifications (une ligne par appareil et par parent)."""
     __tablename__ = "push_subs"

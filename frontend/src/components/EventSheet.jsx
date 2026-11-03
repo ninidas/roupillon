@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api'
-import Sheet, { Confirm } from './Sheet'
+import Sheet from './Sheet'
 import TimeWheel from './TimeWheel'
 
 const LABELS = {
@@ -94,7 +94,7 @@ export default function EventSheet({ kind, day, event, title, defaults = {}, onC
       )}
       {err && <p className="err">{err}</p>}
       <button type="button" className="primary" disabled={busy} onClick={save}>Enregistrer</button>
-      {event?.id && <Confirm label="Supprimer" confirm="Toucher encore pour supprimer" onConfirm={remove} />}
+      {event?.id && <button type="button" className="secondary" disabled={busy} onClick={remove}>Supprimer</button>}
     </Sheet>
   )
 }

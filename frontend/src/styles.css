@@ -91,6 +91,14 @@ h1{font-family:var(--round);font-size:34px;font-weight:800;letter-spacing:-.02em
 .feed-c{fill:var(--bg);stroke:var(--feed-dot);stroke-width:1.2px}
 .feed-g{fill:none;stroke:var(--feed-dot);stroke-width:2.6px;stroke-linecap:round;stroke-linejoin:round}
 .mk-in{animation:mkin .45s ease-out both}
+.night-slept{fill:none;stroke:var(--pill-fill);stroke-opacity:.3;stroke-linecap:round}
+.pill.wake-pill .pill-shape{fill:var(--moon);stroke:var(--moon)}
+.eye-g{fill:none;stroke:var(--moon-fill);stroke-width:2.4px;stroke-linecap:round;stroke-linejoin:round} .eye-p{fill:var(--moon-fill)}
+/* Bascule entre le cadran de jour et celui de nuit, posée entre les deux bouts de l'anneau */
+.face-sw{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);display:flex;gap:2px;padding:3px;border-radius:999px;background:var(--card)}
+.face-sw button{width:42px;height:36px;border:0;border-radius:999px;background:none;color:var(--label2);display:grid;place-items:center;cursor:pointer}
+.face-sw button svg{width:18px;height:18px}
+.face-sw button[aria-selected="true"]{background:var(--fill);color:var(--indigo)}
 .tap{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
 .tap:active{opacity:.6}
 .hit{fill:none;stroke:transparent;stroke-linecap:round;pointer-events:stroke}
@@ -123,6 +131,8 @@ h1{font-family:var(--round);font-size:34px;font-weight:800;letter-spacing:-.02em
 :root[data-theme="bleu"] .action.awake{color:#2a1a05}
 .action.ghost{background:var(--card);color:var(--indigo);flex:0 0 auto;padding:12px 18px;box-shadow:none}
 .action.ghost.wide{flex:1;font-size:17px;font-weight:600}
+/* Après minuit, « Levée » à côté de « Réveil nocturne » : juste sa place, pour que l'autre tienne sur une ligne */
+.action + .action.awake{flex:0 0 auto;padding:12px 18px}
 .action:active{transform:scale(.97)}
 .action svg{width:24px;height:24px;flex:none}
 .action-t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;min-width:0}
@@ -234,7 +244,10 @@ button.cell:active{background:var(--fill)}
 .seg-wrap::-webkit-scrollbar{display:none}
 .seg{display:inline-flex;background:var(--fill);border-radius:10px;padding:2px;gap:2px;white-space:nowrap}
 .seg button{font-size:14px;font-weight:500;border:0;background:transparent;padding:8px 12px;border-radius:8px;cursor:pointer}
-.seg button[aria-pressed="true"]{background:var(--card);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.seg button{color:var(--label)}
+.seg button[aria-pressed="true"],.seg button[aria-selected="true"]{background:var(--card);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.chart-card .seg{display:flex;margin:0 0 10px} .chart-card .seg button{flex:1}
+.chart-card .seg button[aria-selected="true"]{background:var(--bg)}
 
 /* Apparence */
 .themes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}

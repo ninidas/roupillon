@@ -74,6 +74,43 @@ function End({ x, y, cls, onClick, children }) {
   )
 }
 
+// Biberons : un petit point lumineux juste à l'extérieur de l'anneau, à son heure
+function Feeds({ feeds, from, to, A, tap, onPick }) {
+  return feeds.filter(f => f.t >= from && f.t <= to).map((f) => {
+    const [fx, fy] = pol(R + W / 2 + 9, A(f.t))
+    return (
+      <g key={`f${f.id}`} className="feed-mk"><g {...tap('feed', f.id)}>
+        <circle cx={fx.toFixed(2)} cy={fy.toFixed(2)} r="7" filter="url(#glow)" className="feed-halo" />
+        <circle cx={fx.toFixed(2)} cy={fy.toFixed(2)} r="6.5" className="feed-c" />
+        <At x={fx} y={fy} size={9.5}><path d="M9 2h6M10 2v3l-2 3v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V8l-2-3V2M8 12h8" className="feed-g" /></At>
+        {onPick && <circle cx={fx.toFixed(2)} cy={fy.toFixed(2)} r="13" className="hit-c" />}
+      </g></g>
+    )
+  })
+}
+
+function Defs() {
+  return (
+    <defs>
+      <filter id="glow" filterUnits="userSpaceOnUse" x="-20" y="-20" width="340" height="340"><feGaussianBlur stdDeviation="6" /></filter>
+      <linearGradient id="g-cloud" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffffff" /><stop offset="1" stopColor="#c9c4ff" /></linearGradient>
+      <linearGradient id="g-moon" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#d9d5ff" /><stop offset="1" stopColor="#8b85ff" /></linearGradient>
+      <linearGradient id="g-sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffe9a8" /><stop offset="1" stopColor="#f5a93b" /></linearGradient>
+      <linearGradient id="g-dusk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ffd2a8" /><stop offset="1" stopColor="#ee8656" /></linearGradient>
+    </defs>
+  )
+}
+
+function NowDot({ a }) {
+  const [nx, ny] = pol(R, a)
+  return (
+    <g className="now-dot">
+      <circle cx={nx.toFixed(2)} cy={ny.toFixed(2)} r={9} filter="url(#glow)" className="now-halo" />
+      <circle cx={nx.toFixed(2)} cy={ny.toFixed(2)} r={5.5} className="now-core" />
+    </g>
+  )
+}
+
 export default function Dial({ dial, onPick }) {
   const tap = (kind, idx) => onPick && { onClick: () => onPick(kind, idx), className: 'tap' }
   const { wake, bed, now, night } = dial
@@ -84,27 +121,10 @@ export default function Dial({ dial, onPick }) {
 
   return (
     <svg viewBox="6 4 288 276" className="dial" aria-hidden="true">
-      <defs>
-        <filter id="glow" filterUnits="userSpaceOnUse" x="-20" y="-20" width="340" height="340"><feGaussianBlur stdDeviation="6" /></filter>
-        <linearGradient id="g-cloud" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffffff" /><stop offset="1" stopColor="#c9c4ff" /></linearGradient>
-        <linearGradient id="g-moon" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#d9d5ff" /><stop offset="1" stopColor="#8b85ff" /></linearGradient>
-        <linearGradient id="g-sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffe9a8" /><stop offset="1" stopColor="#f5a93b" /></linearGradient>
-        <linearGradient id="g-dusk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ffd2a8" /><stop offset="1" stopColor="#ee8656" /></linearGradient>
-      </defs>
+      <Defs />
       <path d={arc(R, -135, 135)} className="ring" strokeWidth={W} />
 
-      {/* Biberons : un petit point lumineux juste à l'extérieur de l'anneau, à son heure */}
-      {dial.feeds.filter(f => f.t >= wake && f.t <= bed).map((f) => {
-        const [fx, fy] = pol(R + W / 2 + 9, A(f.t))
-        return (
-          <g key={`f${f.id}`} className="feed-mk"><g {...tap('feed', f.id)}>
-            <circle cx={fx.toFixed(2)} cy={fy.toFixed(2)} r="7" filter="url(#glow)" className="feed-halo" />
-            <circle cx={fx.toFixed(2)} cy={fy.toFixed(2)} r="6.5" className="feed-c" />
-            <At x={fx} y={fy} size={9.5}><path d="M9 2h6M10 2v3l-2 3v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V8l-2-3V2M8 12h8" className="feed-g" /></At>
-            {onPick && <circle cx={fx.toFixed(2)} cy={fy.toFixed(2)} r="13" className="hit-c" />}
-          </g></g>
-        )
-      })}
+      <Feeds feeds={dial.feeds} from={wake} to={bed} A={A} tap={tap} onPick={onPick} />
 
       {dial.naps.map((x, i) => {
         const a0 = A(x.start), full = A(x.end)
@@ -125,20 +145,61 @@ export default function Dial({ dial, onPick }) {
         )
       })}
 
-      {showNow && (() => {
-        const [nx, ny] = pol(R, A(now))
-        return (
-          <g className="now-dot">
-            <circle cx={nx.toFixed(2)} cy={ny.toFixed(2)} r={9} filter="url(#glow)" className="now-halo" />
-            <circle cx={nx.toFixed(2)} cy={ny.toFixed(2)} r={5.5} className="now-core" />
-          </g>
-        )
-      })()}
+      {showNow && <NowDot a={A(now)} />}
 
       <End x={wx} y={wy} cls={`wake${dial.wake_real === false ? ' plan' : ''}`} onClick={onPick && (() => onPick('wake'))}><WakeIcon /></End>
       <End x={bx} y={by} cls={`bed${dial.bed_real ? '' : ' plan'}`} onClick={onPick && (() => onPick('bed'))}><BedIcon /></End>
       <text x={wx.toFixed(1)} y={(wy + 36).toFixed(1)} textAnchor="middle" className="dial-end wake-t">{dial.wake_label}</text>
       <text x={bx.toFixed(1)} y={(by + 36).toFixed(1)} textAnchor="middle" className="dial-end bed-t">{dial.bed_real ? '' : 'vers '}{dial.bed_label}</text>
+    </svg>
+  )
+}
+
+// Un réveil nocturne : un œil, à poser sur la gélule
+const EyeIcon = () => (
+  <g>
+    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" className="eye-g" /><circle cx="12" cy="12" r="2.6" className="eye-p" />
+  </g>
+)
+
+// Cadran de la nuit, du coucher (en bas à gauche) au lever (en bas à droite), réel ou estimé.
+// Le sommeil déjà fait se remplit doucement ; chaque réveil nocturne est une gélule à son heure.
+export function NightDial({ dial, onPick }) {
+  const tap = (kind, idx) => onPick && { onClick: () => onPick(kind, idx), className: 'tap' }
+  const { bed, wake, now } = dial
+  const span = Math.max(60, wake - bed)
+  const A = (t) => -135 + 270 * Math.min(1, Math.max(0, (t - bed) / span))
+  const live = now >= bed
+  const upto = live ? Math.min(now, wake) : wake
+  const [bx, by] = pol(R, -135), [wx, wy] = pol(R, 135)
+
+  return (
+    <svg viewBox="6 4 288 276" className="dial" aria-hidden="true">
+      <Defs />
+      <path d={arc(R, -135, 135)} className="ring" strokeWidth={W} />
+      {upto > bed && <path d={arc(R, -135, A(upto))} className="night-slept" strokeWidth={W - 6} />}
+      <Feeds feeds={dial.feeds} from={bed} to={wake} A={A} tap={tap} onPick={onPick} />
+
+      {dial.wakes.map((w, i) => {
+        const a0 = A(w.start), a1 = A(w.end ?? (live ? now : w.start))
+        const [mx, my] = pol(R, (a0 + a1) / 2)
+        return (
+          <g key={w.id} className="mk-in" style={{ animationDelay: `${120 + i * 110}ms` }}>
+            <g {...tap('night', w.id)}>
+              <Pill a0={a0} a1={a1} cls="real wake-pill" />
+              <At x={mx} y={my} size={15}><EyeIcon /></At>
+              {onPick && <path d={arc(R, a0, Math.max(a1, a0 + 1))} className="hit" strokeWidth={W + 14} />}
+            </g>
+          </g>
+        )
+      })}
+
+      {live && now <= wake && <NowDot a={A(now)} />}
+
+      <End x={bx} y={by} cls="bed" onClick={onPick && (() => onPick('bed'))}><BedIcon /></End>
+      <End x={wx} y={wy} cls={`wake${dial.wake_real ? '' : ' plan'}`} onClick={onPick && dial.wake_real ? () => onPick('wake') : undefined}><WakeIcon /></End>
+      <text x={bx.toFixed(1)} y={(by + 36).toFixed(1)} textAnchor="middle" className="dial-end bed-t">{dial.bed_label}</text>
+      <text x={wx.toFixed(1)} y={(wy + 36).toFixed(1)} textAnchor="middle" className="dial-end wake-t">{dial.wake_real ? '' : 'vers '}{dial.wake_label}</text>
     </svg>
   )
 }

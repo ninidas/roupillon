@@ -215,9 +215,12 @@ def habits(days: list[Day]) -> dict:
             acc[key].append([])
         acc[key][i].append((v, w))
 
-    last, beds = [], []
+    last, beds, ups = [], [], []
     for k, d in enumerate(days):
         w = DECAY ** k
+        # Le matin : l'heure du lever noté (entre 5 h et 10 h, sinon c'est un oubli ou une journée à part)
+        if d.wake_real and 5 * 60 <= d.wake <= 10 * 60:
+            ups.append((d.wake, w))
         # Le soir : éveil entre la fin de la dernière sieste et le coucher, et l'heure du coucher
         if d.bed is not None and 16 * 60 <= d.bed <= 23 * 60:
             beds.append((d.bed, w))
@@ -233,7 +236,18 @@ def habits(days: list[Day]) -> dict:
     out = {key: [(round(_wmedian(v)), len(v)) if v else None for v in rows] for key, rows in acc.items()}
     out["last"] = (round(_wmedian(last)), len(last)) if last else None
     out["bedtime"] = (round(_wmedian(beds)), len(beds)) if beds else None
+    out["waketime"] = (round(_wmedian(ups)), len(ups)) if ups else None
     return out
+
+
+def morning_wake(hab: dict) -> float:
+    """Lever estimé du lendemain : 7 h, recentré sur ses levers notés (au plus 1 h 30 plus tôt ou plus tard),
+    avec la même prudence que pour le coucher."""
+    h = hab.get("waketime")
+    if not h:
+        return DEFAULT_WAKE
+    med, n = h
+    return DEFAULT_WAKE + max(-90, min(90, (med - DEFAULT_WAKE) * n / (n + PRIOR)))
 
 
 def _blend(ref: float, h) -> float:
@@ -288,6 +302,12 @@ WHO_WFA = {
     "f": [[0.3809, 3.2322, 0.14171], [0.1714, 4.1873, 0.13724], [0.0962, 5.1282, 0.13000], [0.0402, 5.8458, 0.12619], [-0.0050, 6.4237, 0.12402], [-0.0430, 6.8985, 0.12274], [-0.0756, 7.2970, 0.12204], [-0.1039, 7.6422, 0.12178], [-0.1288, 7.9487, 0.12181], [-0.1507, 8.2254, 0.12199], [-0.1700, 8.4800, 0.12223], [-0.1872, 8.7192, 0.12247], [-0.2024, 8.9481, 0.12268], [-0.2158, 9.1699, 0.12283], [-0.2278, 9.3870, 0.12294], [-0.2384, 9.6008, 0.12299], [-0.2478, 9.8124, 0.12303], [-0.2562, 10.0226, 0.12306], [-0.2637, 10.2315, 0.12309], [-0.2703, 10.4393, 0.12315], [-0.2762, 10.6464, 0.12323], [-0.2815, 10.8534, 0.12335], [-0.2862, 11.0608, 0.12350], [-0.2903, 11.2688, 0.12369], [-0.2941, 11.4775, 0.12390]],
     "m": [[0.3487, 3.3464, 0.14602], [0.2297, 4.4709, 0.13395], [0.1970, 5.5675, 0.12385], [0.1738, 6.3762, 0.11727], [0.1553, 7.0023, 0.11316], [0.1395, 7.5105, 0.11080], [0.1257, 7.9340, 0.10958], [0.1134, 8.2970, 0.10902], [0.1021, 8.6151, 0.10882], [0.0917, 8.9014, 0.10881], [0.0820, 9.1649, 0.10891], [0.0730, 9.4122, 0.10906], [0.0644, 9.6479, 0.10925], [0.0563, 9.8749, 0.10949], [0.0487, 10.0953, 0.10976], [0.0413, 10.3108, 0.11007], [0.0343, 10.5228, 0.11041], [0.0275, 10.7319, 0.11079], [0.0211, 10.9385, 0.11119], [0.0148, 11.1430, 0.11164], [0.0087, 11.3462, 0.11211], [0.0029, 11.5486, 0.11261], [-0.0028, 11.7504, 0.11314], [-0.0083, 11.9514, 0.11369], [-0.0137, 12.1515, 0.11426]],
 }
+# Courbes de taille de l'OMS (« Length-for-age, birth to 2 years », taille couchée) : L vaut 1,
+# il suffit de M (médiane, cm) et S, un mois par ligne.
+WHO_LFA = {
+    "f": [[49.1477, 0.03790], [53.6872, 0.03640], [57.0673, 0.03568], [59.8029, 0.03520], [62.0899, 0.03486], [64.0301, 0.03463], [65.7311, 0.03448], [67.2873, 0.03441], [68.7498, 0.03440], [70.1435, 0.03444], [71.4818, 0.03452], [72.7710, 0.03464], [74.0150, 0.03479], [75.2176, 0.03496], [76.3817, 0.03514], [77.5099, 0.03534], [78.6055, 0.03555], [79.6710, 0.03576], [80.7079, 0.03598], [81.7182, 0.03620], [82.7036, 0.03643], [83.6654, 0.03666], [84.6040, 0.03688], [85.5202, 0.03711], [86.4153, 0.03734]],
+    "m": [[49.8842, 0.03795], [54.7244, 0.03557], [58.4249, 0.03424], [61.4292, 0.03328], [63.8860, 0.03257], [65.9026, 0.03204], [67.6236, 0.03165], [69.1645, 0.03139], [70.5994, 0.03124], [71.9687, 0.03117], [73.2812, 0.03118], [74.5388, 0.03125], [75.7488, 0.03137], [76.9186, 0.03154], [78.0497, 0.03174], [79.1458, 0.03197], [80.2113, 0.03222], [81.2487, 0.03250], [82.2587, 0.03279], [83.2418, 0.03310], [84.1996, 0.03342], [85.1348, 0.03376], [86.0477, 0.03410], [86.9410, 0.03445], [87.8161, 0.03479]],
+}
 DAYS_PER_MONTH = 30.4375
 PERCENTILES = {"p3": -1.881, "p15": -1.036, "p50": 0.0, "p85": 1.036, "p97": 1.881}
 
@@ -302,8 +322,18 @@ def who_weight(sex: str, days: float, z: float) -> float:
     return M * (1 + L * S * z) ** (1 / L) if abs(L) > 1e-9 else M * 2.718281828 ** (S * z)
 
 
-def who_curves(sex: str, until_days: int, step: int = 7) -> dict:
+def who_length(sex: str, days: float, z: float) -> float:
+    """Taille (cm) au z-score z pour cet âge (L = 1 : la courbe est une simple loi normale)."""
+    rows = WHO_LFA[sex]
+    m = max(0.0, min(len(rows) - 1.0, days / DAYS_PER_MONTH))
+    i = min(int(m), len(rows) - 2)
+    f = m - i
+    M, S = (rows[i][k] + (rows[i + 1][k] - rows[i][k]) * f for k in range(2))
+    return M * (1 + S * z)
+
+
+def who_curves(sex: str, until_days: int, step: int = 7, of=who_weight) -> dict:
     days = list(range(0, until_days + 1, step))
     if days[-1] != until_days:
         days.append(until_days)
-    return {"days": days} | {k: [round(who_weight(sex, d, z), 3) for d in days] for k, z in PERCENTILES.items()}
+    return {"days": days} | {k: [round(of(sex, d, z), 3) for d in days] for k, z in PERCENTILES.items()}

@@ -54,10 +54,17 @@ def test_journee_complete(client, auth, clock):
     t = client.get("/api/today", headers=auth).json()
     assert t["mode"] == "night" and t["date"] == "2026-10-24"
     assert [a["act"] for a in t["actions"]] == ["night_start", "wake"]
+    # la nuit : réveil estimé au centre, cadran de la nuit en premier, la journée en second
+    assert t["headline"]["cap"] == "Réveil estimé" and t["headline"]["big"] == "07:03"   # lever de la veille à 07:10, rapproché de 7 h
+    nd = t["night_dial"]
+    assert nd["head"] == t["headline"] and not nd["wake_real"] and nd["wake_label"] == "07:03"
+    assert [(w["start_hm"], w["end_hm"]) for w in nd["wakes"]] == [("23:10", "23:40")]
+    assert t["day_head"]["cap"] == "Siestes"
 
     clock.set("2026-10-25 07:00")
     t = act(client, auth, "wake").json()["today"]
     assert t["mode"] == "day" and t["date"] == "2026-10-25"
+    assert t["night_dial"]["head"]["cap"] == "Nuit dernière" and t["night_dial"]["wake_real"]
     # nuit du changement d'heure : 11 h à l'horloge, 12 h réelles
     assert t["totals"]["last_night"]["sleep"] == "12 h" and t["totals"]["last_night"]["count"] == 1
 
@@ -282,3 +289,22 @@ def test_courbe_de_poids(client, auth, clock):
     client.put("/api/settings", json={"sex": "f"}, headers=auth)
     g = client.get("/api/growth", headers=auth).json()
     assert g["curves"]["days"][0] == 0 and g["curves"]["days"][-1] == g["span_days"] and len(g["curves"]["p50"]) == len(g["curves"]["days"])
+
+
+def test_taille(client, auth, clock):
+    from app import engine as E
+    # Tables OMS de la taille : fille de 3 mois, médiane 59,8 cm, 3e percentile 55,8 ; garçon de 6 mois, médiane 67,6
+    assert round(E.who_length("f", 3 * E.DAYS_PER_MONTH, 0), 1) == 59.8
+    assert round(E.who_length("f", 3 * E.DAYS_PER_MONTH, -1.881), 1) == 55.8
+    assert round(E.who_length("m", 6 * E.DAYS_PER_MONTH, 0), 1) == 67.6
+    clock.set("2026-10-24 10:00")
+    assert client.post("/api/heights", json={"day": "2026-10-30", "cm": 60}, headers=auth).status_code == 422
+    assert client.post("/api/heights", json={"day": "2026-10-02", "cm": 12}, headers=auth).status_code == 422
+    client.post("/api/heights", json={"day": "2026-09-02", "cm": 57}, headers=auth)
+    h = client.post("/api/heights", json={"day": "2026-10-02", "cm": 59.5}, headers=auth).json()
+    client.put("/api/settings", json={"sex": "f"}, headers=auth)
+    g = client.get("/api/growth", headers=auth).json()
+    assert g["heights"][0]["cm"] == "59,5" and g["heights"][0]["gain"] == "+2,5 cm en 30 jours"
+    assert len(g["height_curves"]["p50"]) == len(g["height_curves"]["days"])
+    assert client.delete(f"/api/heights/{h['id']}", headers=auth).json() == {"deleted": 1}
+    assert len(client.get("/api/growth", headers=auth).json()["heights"]) == 1

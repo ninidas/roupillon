@@ -128,7 +128,7 @@ def kg_text(grams: int) -> str:
 
 
 def growth(db: Session, today: date) -> dict:
-    """Pesées, gain depuis la précédente, et courbes OMS jusqu'un peu après l'âge actuel."""
+    """Pesées et mesures de taille, gain depuis la précédente, et courbes OMS jusqu'un peu après l'âge actuel."""
     cfg = settings(db)
     birth = date.fromisoformat(cfg["birth_date"]) if cfg["birth_date"] else None
     ws = db.query(models.Weight).order_by(models.Weight.day, models.Weight.id).all()
@@ -144,12 +144,28 @@ def growth(db: Session, today: date) -> dict:
         prev = w
     age = (today - birth).days if birth else None
     span = None
+    hs, hout, hprev = db.query(models.Height).order_by(models.Height.day, models.Height.id).all(), [], None
+    for h in hs:
+        d = date.fromisoformat(h.day)
+        gain = None
+        if hprev:
+            g, n = h.mm - hprev.mm, (d - date.fromisoformat(hprev.day)).days
+            gain = f"{'+' if g >= 0 else '−'}{cm_text(abs(g))} cm" + (f" en {E.plural(n, 'jour')}" if n else " le même jour")
+        hout.append({"id": h.id, "day": h.day, "label": date_label(d), "cm": cm_text(h.mm), "mm": h.mm,
+                     "age_days": (d - birth).days if birth else None, "gain": gain})
+        hprev = h
     if age is not None:
-        last = max([x["age_days"] for x in out if x["age_days"] is not None] or [0])
+        last = max([x["age_days"] for x in out + hout if x["age_days"] is not None] or [0])
         span = min(730, max(183, max(age, last) + 45))
-    curves = E.who_curves(cfg["sex"], span) if cfg["sex"] in E.WHO_WFA and span else None
-    return {"sex": cfg["sex"], "age_days": age, "span_days": span, "weights": out[::-1], "curves": curves,
+    known = cfg["sex"] in E.WHO_WFA and span
+    return {"sex": cfg["sex"], "age_days": age, "span_days": span, "weights": out[::-1],
+            "curves": E.who_curves(cfg["sex"], span) if known else None,
+            "heights": hout[::-1], "height_curves": E.who_curves(cfg["sex"], span, of=E.who_length) if known else None,
             "milk": milk_info(db, cfg, today)}
+
+
+def cm_text(mm: int) -> str:
+    return f"{mm / 10:.1f}".rstrip("0").rstrip(".").replace(".", ",")
 
 
 def age_for(cfg: dict, today: date) -> str:
@@ -240,6 +256,50 @@ def last_night(db: Session, d: date, day: E.Day) -> dict | None:
     return {"sleep": info["sleep"], "count": info["count"]} if info else None
 
 
+def night_view(db: Session, d: date, day: E.Day, nm: int | None = None, est: float | None = None,
+               head: dict | None = None, cap: str = "Nuit") -> dict | None:
+    """Cadran de la nuit qui commence au coucher du jour d : du coucher au lever, en minutes depuis
+    minuit du jour d (le lever dépasse donc 1440). nm et est : nuit en cours, maintenant et lever estimé."""
+    if day.bed is None:
+        return None
+    nxt, _ = build_day(db, d + timedelta(days=1))
+    real = nxt.wake_real and nm is None
+    if real:
+        wake = nxt.wake + 1440
+    elif est is not None:
+        wake = est
+    else:
+        return None
+    # Elle dort plus longtemps que prévu : le cadran s'étire jusqu'à maintenant
+    end = max(wake, nm + 10) if nm is not None else wake
+    feeds = [{"id": e.id, "t": E.minutes(parse(e.start), d), "time": parse(e.start).strftime("%H:%M"), "ml": e.ml,
+              "day": parse(e.start).date().isoformat()}
+             for e in events_between(db, at(d, day.bed), at(d, end) + timedelta(minutes=1), ("feed",))]
+    if head is None:
+        info = E.night_info(day, wake, lambda a, b: real_dur(d, a, b))
+        n = info["count"]
+        head = {"cap": cap, "big": E.dur(info["sleep"]), "icon": "moon",
+                "sub": f"Couchée à {E.fmt(day.bed)} · levée à {E.fmt(wake)} · {E.plural(n, 'réveil') if n else 'aucun réveil'}"}
+    return {
+        "bed": day.bed, "wake": end, "now": nm if nm is not None else -1, "wake_real": real,
+        "bed_id": day.bed_id, "wake_id": nxt.wake_id if real else None, "wake_day": (d + timedelta(days=1)).isoformat(),
+        "bed_label": E.fmt(day.bed), "wake_label": E.fmt(wake),
+        "wakes": [{"id": w.id, "start": w.start, "end": w.end, "start_hm": E.fmt(w.start),
+                   "end_hm": E.fmt(w.end) if w.end is not None else ""} for w in day.night if w.start is not None],
+        "feeds": feeds, "head": head,
+    }
+
+
+def day_head(day: E.Day, feeds: list[dict]) -> dict:
+    """Centre du cadran de jour quand on le regarde après coup (la nuit, ou un jour passé)."""
+    s = E.stats(day)
+    ml = sum(f["ml"] or 0 for f in feeds)
+    parts = [E.plural(s["count"], "sieste") if s["count"] else "aucune sieste"]
+    if feeds:
+        parts.append(f"{ml} ml" if ml else E.plural(len(feeds), "biberon"))
+    return {"cap": "Siestes", "big": E.dur(s["total"]), "icon": "moon", "sub": " · ".join(parts)}
+
+
 def last_feed(db: Session, now: datetime):
     evs = events_between(db, now - timedelta(days=2), now + timedelta(minutes=1), ("feed",))
     return evs[-1] if evs else None
@@ -264,6 +324,7 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
 
     if mode == "night":
         info = E.night_info(day, nm, lambda a, b: real_dur(d, a, b))
+        est = 1440 + E.morning_wake(habits(db, d + timedelta(days=1)))
         open_w = next((w for w in day.night if w.end is None), None)
         if open_w:
             headline = {"cap": "Réveil nocturne", "big": E.dur(real_dur(d, open_w.start, nm)), "icon": "eye",
@@ -272,10 +333,17 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
             widget = {"state": "night_awake", "title": "Réveil nocturne", "line": f"depuis {E.fmt(open_w.start)}",
                       "since": iso(at(d, open_w.start))}
         else:
-            headline = {"cap": "Nuit en cours", "big": E.dur(info["sleep"]), "icon": "moon",
-                        "sub": f"Couchée à {E.fmt(day.bed)} · {E.plural(info['count'], 'réveil') if info['count'] else 'aucun réveil'}"}
+            wakes = E.plural(info['count'], 'réveil') if info['count'] else 'aucun réveil'
+            if nm < est:
+                headline = {"cap": "Réveil estimé", "big": E.fmt(est), "icon": "moon",
+                            "sub": f"Nuit de {E.dur(info['sleep'])} · {wakes}"}
+            else:
+                # Elle dort encore après l'heure estimée : la durée de la nuit en grand
+                headline = {"cap": "Nuit en cours", "big": E.dur(info["sleep"]), "icon": "moon",
+                            "sub": f"Couchée à {E.fmt(day.bed)} · {wakes}"}
             actions = [btn("night_start", "Réveil nocturne", "night", hm)]
             widget = {"state": "night", "title": "Nuit en cours", "line": f"couchée à {E.fmt(day.bed)}",
+                      "message": f"Réveil estimé vers {E.fmt(est)} · couchée à {E.fmt(day.bed)}" if nm < est else None,
                       "since": iso(at(d, day.bed))}
         if nm >= 1440:
             actions.append(btn("wake", "Levée", "awake", hm))
@@ -372,6 +440,12 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
         "timeline": timeline(items, day, hi, nm),
         "totals": totals, "feed": feed,
         "feeds": [{"id": f["id"], "time": E.fmt(f["t"]), "ml": f["ml"]} for f in feeds],
+        # Deux cadrans : la nuit, celui de la nuit en cours (et la journée finie en second) ;
+        # le jour, celui de la journée (et la nuit dernière en second)
+        "night_dial": night_view(db, d, day, nm, est, headline) if mode == "night"
+        else night_view(db, d - timedelta(days=1), build_day(db, d - timedelta(days=1))[0], cap="Nuit dernière")
+        if day.wake_real else None,
+        "day_head": day_head(day, feeds) if mode == "night" else None,
     }
 
 
@@ -464,7 +538,8 @@ def day_view(db: Session, d: date, now: datetime) -> dict:
         kept.append({"type": "bed", "start": last + 90, "real": False, "id": None, "late": False})
     return {"date": d.isoformat(), "label": date_label(d), "summary": day_summary(db, d, now.date()),
             "dial": dial(kept, day, feeds, -1, "day"), "timeline": timeline(kept, day, None, -1),
-            "feeds": [{"id": f["id"], "time": E.fmt(f["t"]), "ml": f["ml"]} for f in feeds]}
+            "feeds": [{"id": f["id"], "time": E.fmt(f["t"]), "ml": f["ml"]} for f in feeds],
+            "night_dial": night_view(db, d, day)}
 
 
 def day_detail(db: Session, d: date) -> dict:

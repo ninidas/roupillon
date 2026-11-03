@@ -77,3 +77,12 @@ def test_le_soir_s_adapte_a_ses_habitudes():
     assert ev["bed_min"] > AGE["bed_min"] and ev["bed_max"] - ev["bed_min"] == AGE["bed_max"] - AGE["bed_min"]
     # sans habitudes, les repères de l'âge
     assert E.evening(AGE, {}) == {"wl": AGE["wl"], "bed_min": AGE["bed_min"], "bed_max": AGE["bed_max"]}
+
+
+def test_lever_estime_suit_ses_matins():
+    assert E.morning_wake({}) == E.DEFAULT_WAKE
+    days = [E.Day(date=date(2026, 10, 20 - k), wake=6 * 60 + 30, wake_real=True) for k in range(4)]
+    w = E.morning_wake(E.habits(days))
+    assert 6 * 60 + 30 < w < 7 * 60           # rapproché de 6 h 30 sans y aller d'un coup
+    far = [E.Day(date=date(2026, 10, 20 - k), wake=9 * 60 + 30, wake_real=True) for k in range(10)]
+    assert E.morning_wake(E.habits(far)) == 8 * 60 + 30   # au plus 1 h 30 d'écart avec 7 h

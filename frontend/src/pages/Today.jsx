@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import Dial from '../components/Dial'
+import Dial, { NightDial } from '../components/Dial'
 import EventSheet, { ML } from '../components/EventSheet'
 import { Bed, Bottle, Check, Chevron, Eye, Moon, Pencil, Plus, Sun } from '../components/Icons'
 import { DaySheet } from './Journal'
@@ -45,8 +45,8 @@ export default function Today({ today, onAct, open, close, refresh, notify, busy
       <WeekStrip current={t.date} sel={sel || t.date} pick={(iso) => setSel(iso === t.date ? null : iso)} />
 
       {viewing
-        ? <PastDay past={past} edit={edit(sel)} openDay={() => open(<DaySheet date={sel} title={past?.label || ''} onClose={() => { close(); loadPast(); refresh() }} open={open} notify={notify} />)} />
-        : <CurrentDay t={t} night={night} onAct={onAct} busy={busy} doneAt={doneAt} edit={edit(t.date)}
+        ? <PastDay key={sel} past={past} edit={edit(sel)} editOn={edit} openDay={() => open(<DaySheet date={sel} title={past?.label || ''} onClose={() => { close(); loadPast(); refresh() }} open={open} notify={notify} />)} />
+        : <CurrentDay t={t} night={night} onAct={onAct} busy={busy} doneAt={doneAt} edit={edit(t.date)} editOn={edit}
             showDay={showDay} setShowDay={setShowDay} refresh={refresh} notify={notify} />}
     </div>
   )
@@ -92,8 +92,12 @@ function WeekStrip({ current, sel, pick }) {
   )
 }
 
-function CurrentDay({ t, night, onAct, busy, doneAt, edit, showDay, setShowDay, refresh, notify }) {
-  const H = t.headline
+function CurrentDay({ t, night, onAct, busy, doneAt, edit, editOn, showDay, setShowDay, refresh, notify }) {
+  // Cadran affiché : celui de la nuit la nuit, celui de la journée le jour ; la bascule montre l'autre
+  const [face, setFace] = useState(night ? 'night' : 'day')
+  useEffect(() => { setFace(night ? 'night' : 'day') }, [night])
+  const nightFace = face === 'night' && !!t.night_dial
+  const H = nightFace ? t.night_dial.head : night ? t.day_head : t.headline
   const HeadIcon = HEAD_ICON[H.icon]
   // Rien de noté aujourd'hui : un mot d'accueil plutôt qu'un cadran rempli de prévisions par défaut
   const started = night || t.feeds.length > 0 || t.timeline.some(x => (x.type === 'wake' && x.real) || (x.type === 'nap' && x.start_real))
@@ -118,12 +122,15 @@ function CurrentDay({ t, night, onAct, busy, doneAt, edit, showDay, setShowDay, 
       ) : (
         // La nuit aussi, le cadran de la journée reste là ; au centre, depuis quand elle dort
         <section className="dial-wrap" aria-live="polite">
-          <Dial dial={t.dial} onPick={pickOn(t.timeline, edit, t.feeds)} />
-          <div className="center">
+          {nightFace
+            ? <NightDial dial={t.night_dial} onPick={pickNight(t.night_dial, editOn, t.date)} />
+            : <Dial dial={t.dial} onPick={pickOn(t.timeline, edit, t.feeds)} />}
+          <div className="center" key={face}>
             <div className="cap">{HeadIcon && <HeadIcon />}{H.cap}</div>
             <div className={`big rd${H.big.length > 7 ? ' long' : ''}`}>{H.big}</div>
             <div className="sub">{H.sub}</div>
           </div>
+          {t.night_dial && <FaceSwitch face={face} setFace={setFace} />}
         </section>
       )}
 
@@ -188,18 +195,29 @@ function CurrentDay({ t, night, onAct, busy, doneAt, edit, showDay, setShowDay, 
   )
 }
 
-function PastDay({ past, edit, openDay }) {
+function PastDay({ past, edit, editOn, openDay }) {
+  const [face, setFace] = useState('day')
   if (!past) return <div className="dial-wrap"><div className="empty">Chargement...</div></div>
   const s = past.summary
+  const nd = face === 'night' && past.night_dial
   return (
     <>
       <section className="dial-wrap past">
-        <Dial dial={past.dial} onPick={pickOn(past.timeline, edit, past.feeds)} />
-        <div className="center">
-          <div className="cap"><Moon />Siestes</div>
-          <div className="big rd">{s ? s.day_sleep : '0 min'}</div>
-          <div className="sub">{s?.night ? `puis nuit de ${s.night.sleep}` : 'nuit non notée'}</div>
+        {nd
+          ? <NightDial dial={nd} onPick={pickNight(nd, editOn, past.date)} />
+          : <Dial dial={past.dial} onPick={pickOn(past.timeline, edit, past.feeds)} />}
+        <div className="center" key={face}>
+          {nd ? <>
+            <div className="cap"><Moon />{nd.head.cap}</div>
+            <div className="big rd">{nd.head.big}</div>
+            <div className="sub">{nd.head.sub}</div>
+          </> : <>
+            <div className="cap"><Moon />Siestes</div>
+            <div className="big rd">{s ? s.day_sleep : '0 min'}</div>
+            <div className="sub">{s?.night ? `puis nuit de ${s.night.sleep}` : 'nuit non notée'}</div>
+          </>}
         </div>
+        {past.night_dial && <FaceSwitch face={face} setFace={setFace} />}
       </section>
       <div className="actions">
         <button type="button" className="action ghost wide" onClick={openDay}><Pencil /><span className="action-t rd">Corriger cette journée</span></button>
@@ -246,6 +264,32 @@ function Feeds({ feeds, edit }) {
       </div>
     </section>
   )
+}
+
+// Bascule entre le cadran de la journée et celui de la nuit
+function FaceSwitch({ face, setFace }) {
+  return (
+    <div className="face-sw" role="tablist" aria-label="Cadran">
+      <button type="button" role="tab" aria-selected={face === 'day'} aria-label="Journée" onClick={() => setFace('day')}><Sun /></button>
+      <button type="button" role="tab" aria-selected={face === 'night'} aria-label="Nuit" onClick={() => setFace('night')}><Moon /></button>
+    </div>
+  )
+}
+
+// Toucher le cadran de nuit : le coucher, un réveil nocturne, un biberon ou le lever ouvrent leur correction.
+// bedDay : jour du coucher (les réveils nocturnes s'y rattachent) ; le lever et les biberons gardent leur propre jour.
+const pickNight = (nd, editOn, bedDay) => (kind, id) => {
+  if (kind === 'bed') return editOn(bedDay)({ kind: 'bed', event: { id: nd.bed_id, start: nd.bed_label } })
+  if (kind === 'wake') return nd.wake_id && editOn(nd.wake_day)({ kind: 'wake', event: { id: nd.wake_id, start: nd.wake_label } })
+  if (kind === 'night') {
+    const j = nd.wakes.findIndex(w => w.id === id)
+    const w = nd.wakes[j]
+    return w && editOn(bedDay)({ kind: 'night', title: `Réveil nocturne ${j + 1}`, event: { id: w.id, start: w.start_hm, end: w.end_hm } })
+  }
+  if (kind === 'feed') {
+    const f = nd.feeds.find(x => x.id === id)
+    return f && editOn(f.day)({ kind: 'feed', event: { id: f.id, start: f.time, ml: f.ml } })
+  }
 }
 
 // Frise : une ligne par fait, l'heure à gauche, la durée à droite, l'éveil entre deux lignes

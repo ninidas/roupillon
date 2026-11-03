@@ -345,6 +345,31 @@ def delete_weight(wid: int, user: models.User = Depends(current_user), db: Sessi
     return {"deleted": 1}
 
 
+class HeightNew(BaseModel):
+    day: date
+    cm: float = Field(ge=30, le=130)
+
+
+@router.post("/heights")
+def add_height(body: HeightNew, user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    if body.day > S.now_local().date():
+        raise HTTPException(status_code=422, detail="Cette date est dans le futur")
+    h = models.Height(day=body.day.isoformat(), mm=round(body.cm * 10), created_by=user.id)
+    db.add(h)
+    db.commit()
+    return {"id": h.id, "day": h.day, "cm": S.cm_text(h.mm)}
+
+
+@router.delete("/heights/{hid}")
+def delete_height(hid: int, user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    h = db.get(models.Height, hid)
+    if not h:
+        raise HTTPException(status_code=404, detail="Mesure introuvable")
+    db.delete(h)
+    db.commit()
+    return {"deleted": 1}
+
+
 # ---------- réglages ----------
 
 @router.get("/settings")

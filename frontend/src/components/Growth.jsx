@@ -1,58 +1,76 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
-import Sheet, { Confirm } from './Sheet'
+import Sheet from './Sheet'
 import { Plus } from './Icons'
 
-// Croissance : les pesées sur les courbes de l'OMS, et ce qu'elle a pris d'une pesée à l'autre.
+// Croissance : les pesées et les tailles sur les courbes de l'OMS, et ce qu'elle a pris d'une mesure à l'autre.
 // Aucun verdict : la bande montre où se situent la plupart des bébés, c'est la régularité qui compte.
 export default function Growth({ open, close, notify, version }) {
   const [g, setG] = useState(null)
+  const [tab, setTab] = useState('w')       // w : poids, h : taille
   const load = () => api('/growth').then(setG).catch(e => notify(e.message))
   useEffect(() => { load() }, [version])  // eslint-disable-line react-hooks/exhaustive-deps
   const done = (msg) => { close(); load(); notify(msg) }
   if (!g) return null
+  const K = KINDS[tab]
+  const list = g[K.list]
   return (
     <section>
       <div className="section-row">
         <h2 className="section-h">Croissance</h2>
-        <button type="button" className="feedbtn accent" onClick={() => open(<WeightSheet onClose={close} onDone={done} />)}><Plus />Pesée</button>
+        <button type="button" className="feedbtn accent" onClick={() => open(<MeasureSheet onClose={close} onDone={done} />)}><Plus />Mesure</button>
       </div>
       <div className="group chart-card">
-        <WeightChart g={g} />
-        {g.curves
-          ? <div className="legend"><span><i className="lg-band" />Courbes 3 à 97 de l'OMS</span><span><i className="lg-mid" />Médiane</span><span><i className="lg-dot" />Ses pesées</span></div>
+        <div className="seg" role="tablist" aria-label="Courbe">
+          <button type="button" role="tab" id="g-tab-w" aria-selected={tab === 'w'} onClick={() => setTab('w')}>Poids</button>
+          <button type="button" role="tab" id="g-tab-h" aria-selected={tab === 'h'} onClick={() => setTab('h')}>Taille</button>
+        </div>
+        <GrowthChart key={tab} g={g} K={K} />
+        {g[K.curves]
+          ? <div className="legend"><span><i className="lg-band" />Courbes 3 à 97 de l'OMS</span><span><i className="lg-mid" />Médiane</span><span><i className="lg-dot" />{K.dots}</span></div>
           : <p className="foot" style={{ margin: '4px 6px 0' }}>Indiquez fille ou garçon dans Réglages pour voir les courbes de l'OMS.</p>}
       </div>
-      {g.weights.length > 0 && <div className="group" style={{ marginTop: 10 }}>
-        {g.weights.slice(0, 6).map(w => (
-          <button key={w.id} type="button" className="cell" onClick={() => open(<WeightDetail w={w} onClose={close} onDone={done} />)}>
-            <span className="grow"><span className="ttl rd" style={{ fontWeight: 600 }}>{w.kg} kg</span><span className="sub2" style={{ display: 'block' }}>{w.label}</span></span>
-            {w.gain && <span className="val">{w.gain}</span>}
+      {list.length > 0 && <div className="group" style={{ marginTop: 10 }}>
+        {list.slice(0, 6).map(m => (
+          <button key={m.id} type="button" className="cell" onClick={() => open(<MeasureDetail m={m} K={K} onClose={close} onDone={done} />)}>
+            <span className="grow"><span className="ttl rd" style={{ fontWeight: 600 }}>{m[K.text]} {K.unit}</span><span className="sub2" style={{ display: 'block' }}>{m.label}</span></span>
+            {m.gain && <span className="val">{m.gain}</span>}
           </button>
         ))}
       </div>}
       <p className="foot">
         La plupart des bébés se situent entre les courbes 3 et 97 ; le pédiatre regarde surtout si elle suit régulièrement la sienne.
-        {g.milk ? ` D'après sa dernière pesée, les bébés de son âge boivent ${g.milk.label}, un simple ordre de grandeur : chaque bébé règle son appétit.` : ''}
+        {tab === 'w' && g.milk ? ` D'après sa dernière pesée, les bébés de son âge boivent ${g.milk.label}, un simple ordre de grandeur : chaque bébé règle son appétit.` : ''}
       </p>
     </section>
   )
 }
 
+// Ce qui change entre la courbe de poids et celle de taille
+const KINDS = {
+  w: { list: 'weights', curves: 'curves', unit: 'kg', text: 'kg', value: (m) => m.grams / 1000, dots: 'Ses pesées',
+       empty: 'Ajoutez une première pesée pour voir sa courbe.', aria: 'Courbe de poids sur les courbes de l\'OMS',
+       step: (r) => r > 8 ? 2 : r > 2.5 ? 1 : 0.5, pad: [0.5, 0.3], zpad: 0.15, path: 'weights', gone: 'Pesée supprimée', del: 'Supprimer cette pesée' },
+  h: { list: 'heights', curves: 'height_curves', unit: 'cm', text: 'cm', value: (m) => m.mm / 10, dots: 'Ses mesures',
+       empty: 'Ajoutez une première mesure de taille pour voir sa courbe.', aria: 'Courbe de taille sur les courbes de l\'OMS',
+       step: (r) => r > 30 ? 10 : r > 12 ? 5 : 2, pad: [2, 2], zpad: 0.5, path: 'heights', gone: 'Mesure supprimée', del: 'Supprimer cette mesure' },
+}
+
 const CW = 340, CH = 210, X0 = 30, X1 = CW - 22, Y0 = 8, Y1 = CH - 24
 const MIN_SPAN = 14     // zoom maximal : deux semaines à l'écran
-const fmtKg = (k) => String(Math.round(k * 10) / 10).replace('.', ',')
+const fmtV = (k) => String(Math.round(k * 10) / 10).replace('.', ',')
 
-// Courbe de poids. Sur téléphone : deux doigts pour zoomer, un doigt pour se déplacer une fois zoomé,
-// double tape pour tout revoir. Seul l'axe du temps se zoome ; les kilos suivent ce qui est à l'écran.
-function WeightChart({ g }) {
+// Courbe de poids ou de taille. Sur téléphone : deux doigts pour zoomer, un doigt pour se déplacer une fois zoomé,
+// double tape pour tout revoir. Seul l'axe du temps se zoome ; l'axe des valeurs suit ce qui est à l'écran.
+function GrowthChart({ g, K }) {
   const span = g.span_days || 183
   const [view, setView] = useState(null)        // [premier jour, dernier jour] affichés, null = tout
   const box = useRef(null)
   const st = useRef({})
   const [d0, d1] = view || [0, span]
 
-  const has = g.weights.length > 0 || !!g.curves
+  const c = g[K.curves]
+  const has = g[K.list].length > 0 || !!c
   useEffect(() => { st.current.view = null; setView(null) }, [span])
 
   useEffect(() => {
@@ -116,19 +134,18 @@ function WeightChart({ g }) {
     }
   }, [span, has])
 
-  const pts = g.weights.filter(w => w.age_days != null).map(w => ({ d: w.age_days, kg: w.grams / 1000 })).reverse()
-  const c = g.curves
-  if (!has) return <div className="empty">Ajoutez une première pesée pour voir sa courbe.</div>
-  // Kilos : ce qui est visible entre d0 et d1 (pesées et courbes 3 et 97)
+  const pts = g[K.list].filter(w => w.age_days != null).map(w => ({ d: w.age_days, kg: K.value(w) })).reverse()
+  if (!has) return <div className="empty">{K.empty}</div>
+  // Valeurs : ce qui est visible entre d0 et d1 (mesures et courbes 3 et 97)
   const inView = (d) => d >= d0 - 1 && d <= d1 + 1
   const vis = pts.filter(p => inView(p.d)).map(p => p.kg)
   if (c) c.days.forEach((d, i) => { if (inView(d)) vis.push(c.p3[i], c.p97[i]) })
   const kgs = vis.length ? vis : pts.map(p => p.kg)
   const zoomed = !!view
   const lo = Math.min(...kgs), hi = Math.max(...kgs)
-  const kgStep = hi - lo > 8 ? 2 : hi - lo > 2.5 ? 1 : 0.5
-  const ymin = Math.max(0, Math.floor((lo - (zoomed ? 0.15 : 0.5)) / kgStep) * kgStep)
-  const ymax = Math.ceil((hi + (zoomed ? 0.15 : 0.3)) / kgStep) * kgStep
+  const kgStep = K.step(hi - lo)
+  const ymin = Math.max(0, Math.floor((lo - (zoomed ? K.zpad : K.pad[0])) / kgStep) * kgStep)
+  const ymax = Math.ceil((hi + (zoomed ? K.zpad : K.pad[1])) / kgStep) * kgStep
   const x = (d) => X0 + ((d - d0) / (d1 - d0)) * (X1 - X0)
   const y = (kg) => Y1 - ((kg - ymin) / (ymax - ymin)) * (Y1 - Y0)
   const line = (ks) => c.days.map((d, i) => `${x(d).toFixed(1)},${y(ks[i]).toFixed(1)}`).join(' ')
@@ -149,16 +166,16 @@ function WeightChart({ g }) {
   return (
     <>
       <div ref={box} className="chart-zoom">
-        <svg className="chart" viewBox={`0 0 ${CW} ${CH}`} role="img" aria-label="Courbe de poids sur les courbes de l'OMS">
+        <svg className="chart" viewBox={`0 0 ${CW} ${CH}`} role="img" aria-label={K.aria}>
           <defs><clipPath id="w-plot"><rect x={X0} y={0} width={X1 - X0} height={Y1 + 1} /></clipPath></defs>
           {Array.from({ length: Math.round((ymax - ymin) / kgStep) + 1 }, (_, i) => ymin + i * kgStep).map(k => (
             <g key={`k${k}`}>
               <line x1={X0} x2={X1} y1={y(k)} y2={y(k)} stroke="var(--sep)" strokeDasharray="2 3" />
-              {y(k) > Y0 + 9 && <text x={X0 - 6} y={y(k) + 3.5} textAnchor="end" className="chart-t">{fmtKg(k)}</text>}
+              {y(k) > Y0 + 9 && <text x={X0 - 6} y={y(k) + 3.5} textAnchor="end" className="chart-t">{fmtV(k)}</text>}
             </g>
           ))}
           {ticks.map(tk => <text key={`t${tk.d}`} x={x(tk.d)} y={CH - 8} textAnchor="middle" className="chart-t">{tk.t}</text>)}
-          <text x={X0 - 6} y={Y0 + 2} textAnchor="end" className="chart-t">kg</text>
+          <text x={X0 - 6} y={Y0 + 2} textAnchor="end" className="chart-t">{K.unit}</text>
           <g clipPath="url(#w-plot)">
             {c && <>
               <polygon points={band(c.p3, c.p97)} className="who-band" />
@@ -184,34 +201,48 @@ function WeightChart({ g }) {
   )
 }
 
-function WeightSheet({ onClose, onDone }) {
+// Une mesure : le poids, la taille, ou les deux (chez le pédiatre, on prend souvent les deux)
+function MeasureSheet({ onClose, onDone }) {
   const d = new Date()
   const [day, setDay] = useState(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
   const [kg, setKg] = useState('')
+  const [cm, setCm] = useState('')
   const [err, setErr] = useState('')
-  const value = Number(String(kg).replace(',', '.'))
+  const num = (v) => Number(String(v).replace(',', '.'))
+  const okKg = kg === '' || (num(kg) >= 1.5 && num(kg) <= 25)
+  const okCm = cm === '' || (num(cm) >= 30 && num(cm) <= 130)
+  const ready = (kg !== '' || cm !== '') && okKg && okCm
+  const show = (v) => String(num(v)).replace('.', ',')
   async function save() {
     setErr('')
-    try { await api('/weights', { method: 'POST', body: { day, kg: value } }); onDone(`Pesée de ${String(value).replace('.', ',')} kg enregistrée`) } catch (e) { setErr(e.message) }
+    try {
+      if (kg !== '') await api('/weights', { method: 'POST', body: { day, kg: num(kg) } })
+      if (cm !== '') await api('/heights', { method: 'POST', body: { day, cm: num(cm) } })
+      onDone([kg !== '' && `${show(kg)} kg`, cm !== '' && `${show(cm)} cm`].filter(Boolean).join(' et ') + ' enregistrés')
+    } catch (e) { setErr(e.message) }
   }
   return (
-    <Sheet title="Pesée" onClose={onClose}>
-      <label className="field">Poids (kg)<input id="w-kg" className="input" inputMode="decimal" placeholder="5,5" value={kg} onChange={e => setKg(e.target.value)} /></label>
-      <label className="field">Date de la pesée<input id="w-day" type="date" className="input txt" value={day} onChange={e => setDay(e.target.value)} /></label>
+    <Sheet title="Mesure" onClose={onClose}>
+      <div className="fields">
+        <label className="field">Poids (kg)<input id="m-kg" className="input" inputMode="decimal" placeholder="5,5" value={kg} onChange={e => setKg(e.target.value)} /></label>
+        <label className="field">Taille (cm)<input id="m-cm" className="input" inputMode="decimal" placeholder="60" value={cm} onChange={e => setCm(e.target.value)} /></label>
+      </div>
+      <label className="field">Date de la mesure<input id="m-day" type="date" className="input txt" value={day} onChange={e => setDay(e.target.value)} /></label>
+      <p className="foot" style={{ margin: 0 }}>Remplissez l'un ou l'autre, ou les deux.</p>
       {err && <p className="err">{err}</p>}
-      <button type="button" className="primary" disabled={!(value >= 1.5 && value <= 25)} onClick={save}>Enregistrer</button>
+      <button type="button" className="primary" disabled={!ready} onClick={save}>Enregistrer</button>
     </Sheet>
   )
 }
 
-function WeightDetail({ w, onClose, onDone }) {
+function MeasureDetail({ m, K, onClose, onDone }) {
   async function remove() {
-    try { await api(`/weights/${w.id}`, { method: 'DELETE' }); onDone('Pesée supprimée') } catch { onClose() }
+    try { await api(`/${K.path}/${m.id}`, { method: 'DELETE' }); onDone(K.gone) } catch { onClose() }
   }
   return (
-    <Sheet title={`${w.kg} kg`} onClose={onClose}>
-      <p className="sub2" style={{ margin: 0 }}>{w.label}{w.gain ? ` · ${w.gain} depuis la pesée précédente` : ''}</p>
-      <Confirm label="Supprimer cette pesée" confirm="Toucher encore pour supprimer" onConfirm={remove} />
+    <Sheet title={`${m[K.text]} ${K.unit}`} onClose={onClose}>
+      <p className="sub2" style={{ margin: 0 }}>{m.label}{m.gain ? ` · ${m.gain} depuis la mesure précédente` : ''}</p>
+      <button type="button" className="secondary" onClick={remove}>{K.del}</button>
     </Sheet>
   )
 }
