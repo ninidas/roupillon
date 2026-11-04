@@ -323,6 +323,8 @@ button.cell:active{background:var(--fill)}
 :root[data-theme="bleu"] .toast{background:#2e2a5c;box-shadow:0 0 0 1px #45408a,0 12px 32px rgba(0,0,0,.45)}
 :root[data-night] .toast{background:#2a2730;color:var(--label)}
 .toast.top{bottom:auto;top:calc(10px + env(safe-area-inset-top,0px))}
+.toast{touch-action:none;user-select:none;-webkit-user-select:none}
+.toast-msg{cursor:pointer}
 .toast-row{display:flex;align-items:center;gap:10px}
 .toast-msg{flex:1;min-width:0;font-weight:600;font-size:16px}
 .toast button{border:0;border-radius:999px;padding:8px 12px;min-height:40px;font-size:14px;font-weight:600;cursor:pointer;background:rgba(255,255,255,.16);color:inherit;font-variant-numeric:tabular-nums}

@@ -155,20 +155,36 @@ export default function App() {
       </nav>
 
       {sheet}
-      {toast && (
-        <div className={`toast${sheet ? ' top' : ''}`} role="status" key={toast.id}>
-          <div className="toast-row">
-            <div className="toast-msg">{toast.msg}</div>
-            {toast.actions.filter(x => !x.early).map(x => <button key={x.label} type="button" className={x.cls} onClick={x.run}>{x.label}</button>)}
-          </div>
-          {toast.actions.some(x => x.early) && (
-            <div className="toast-acts">
-              <span>C'était il y a</span>
-              {toast.actions.filter(x => x.early).map(x => <button key={x.label} type="button" onClick={x.run}>{x.label}</button>)}
-            </div>
-          )}
+      {toast && <Toast toast={toast} top={!!sheet} key={toast.id} onClose={() => { clearTimeout(toastTimer.current); setToast(null) }} />}
+    </>
+  )
+}
+
+// Bandeau de confirmation : il part seul, ou tout de suite d'un toucher sur le texte ou d'un glissement
+function Toast({ toast, top, onClose }) {
+  const from = useRef(null)
+  const [dy, setDy] = useState(0)
+  const down = (e) => { from.current = e.clientY }
+  const move = (e) => { if (from.current !== null) setDy(e.clientY - from.current) }
+  const up = () => {
+    if (from.current === null) return
+    from.current = null
+    if (Math.abs(dy) > 30) onClose(); else setDy(0)
+  }
+  return (
+    <div className={`toast${top ? ' top' : ''}`} role="status"
+      style={dy ? { transform: `translate(-50%, ${dy}px)`, opacity: Math.max(0.2, 1 - Math.abs(dy) / 120), animation: 'none' } : undefined}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={up}>
+      <div className="toast-row">
+        <div className="toast-msg" onClick={onClose}>{toast.msg}</div>
+        {toast.actions.filter(x => !x.early).map(x => <button key={x.label} type="button" className={x.cls} onClick={x.run}>{x.label}</button>)}
+      </div>
+      {toast.actions.some(x => x.early) && (
+        <div className="toast-acts">
+          <span>C'était il y a</span>
+          {toast.actions.filter(x => x.early).map(x => <button key={x.label} type="button" onClick={x.run}>{x.label}</button>)}
         </div>
       )}
-    </>
+    </div>
   )
 }
