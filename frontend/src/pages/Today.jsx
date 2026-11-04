@@ -124,7 +124,7 @@ function CurrentDay({ t, night, onAct, busy, doneAt, edit, editOn, showDay, setS
         <section className="dial-wrap" aria-live="polite">
           {nightFace
             ? <NightDial dial={t.night_dial} onPick={pickNight(t.night_dial, editOn, t.date)} />
-            : <Dial dial={t.dial} onPick={pickOn(t.timeline, edit, t.feeds)} />}
+            : <Dial dial={t.dial} onPick={pickOn(t.timeline, edit, t.feeds, t.dial.feeds_plan, notify)} />}
           <div className="center" key={face}>
             <div className="cap">{HeadIcon && <HeadIcon />}{H.cap}</div>
             <div className={`big rd${H.big.length > 7 ? ' long' : ''}`}>{H.big}</div>
@@ -240,7 +240,11 @@ function editItem(edit, x) {
   return edit({ kind: 'nap', title: real ? x.label : `Noter la ${x.label.toLowerCase()}`, event: real ? { id: x.id, start: x.start, end: x.end_real ? x.end : '', laid: x.laid } : null, defaults: { start: x.start } })
 }
 // Toucher le cadran : la sieste, le soleil ou la lune ouvrent la même correction que leur ligne dans la frise
-const pickOn = (items, edit, feeds = []) => (kind, idx) => {
+const pickOn = (items, edit, feeds = [], planned = [], notify) => (kind, idx) => {
+  if (kind === 'feed_plan') {
+    const f = planned[idx]
+    return f && notify?.(`Biberon prévu vers ${f.label}${f.during ? `, pendant la ${f.during.toLowerCase()}` : ''}`)
+  }
   if (kind === 'feed') {
     const f = feeds.find(x => x.id === idx)
     return f && edit({ kind: 'feed', event: { id: f.id, start: f.time, ml: f.ml } })

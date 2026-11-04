@@ -89,6 +89,20 @@ function Feeds({ feeds, from, to, A, tap, onPick }) {
   })
 }
 
+// Biberons prévus : le même point, en pointillés et sans halo, pour ne pas alourdir l'anneau
+function PlannedFeeds({ feeds, from, to, A, tap, onPick }) {
+  return (feeds || []).filter(f => f.t >= from && f.t <= to).map((f, i) => {
+    const [fx, fy] = pol(R + W / 2 + 9, A(f.t))
+    return (
+      <g key={`p${f.t}`} className="feed-mk plan"><g {...tap('feed_plan', i)}>
+        <circle cx={fx.toFixed(2)} cy={fy.toFixed(2)} r="6.5" className="feed-c" />
+        <At x={fx} y={fy} size={9.5}><path d="M9 2h6M10 2v3l-2 3v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V8l-2-3V2M8 12h8" className="feed-g" /></At>
+        {onPick && <circle cx={fx.toFixed(2)} cy={fy.toFixed(2)} r="13" className="hit-c" />}
+      </g></g>
+    )
+  })
+}
+
 function Defs() {
   return (
     <defs>
@@ -127,6 +141,7 @@ export default function Dial({ dial, onPick }) {
       <path d={arc(R, -135, 135)} className="ring" strokeWidth={W} />
 
       <Feeds feeds={dial.feeds} from={wake} to={bed} A={A} tap={tap} onPick={onPick} />
+      {!night && <PlannedFeeds feeds={dial.feeds_plan} from={wake} to={bed} A={A} tap={tap} onPick={onPick} />}
 
       {dial.naps.map((x, i) => {
         const a0 = A(x.start), full = A(x.end)

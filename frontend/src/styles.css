@@ -90,6 +90,8 @@ h1{font-family:var(--round);font-size:34px;font-weight:800;letter-spacing:-.02em
 .feed-halo{fill:var(--feed-dot);opacity:.35}
 .feed-c{fill:var(--bg);stroke:var(--feed-dot);stroke-width:1.2px}
 .feed-g{fill:none;stroke:var(--feed-dot);stroke-width:2.6px;stroke-linecap:round;stroke-linejoin:round}
+.feed-mk.plan{opacity:.6}
+.feed-mk.plan .feed-c{stroke-dasharray:2.2 2.4}
 .mk-in{animation:mkin .45s ease-out both}
 .night-slept{fill:none;stroke:var(--pill-fill);stroke-opacity:.3;stroke-linecap:round}
 .pill.wake-pill .pill-shape{fill:var(--moon);stroke:var(--moon)}

@@ -496,11 +496,15 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
         if lf.ml is None and 0 <= ago < 30:
             feed["ask_id"] = lf.id
 
+    dl = dial(items, day, feeds, nm, mode)
+    first = E.minutes(nxt, d) if mode == "day" and feed["last"] and feed["last"]["next"] else None
+    dl["feeds_plan"] = planned_feeds(items, first)
+
     return {
         "now": hm, "now_iso": iso(now), "date": d.isoformat(), "date_label": date_label(now.date()), "mode": mode,
         "child": child_info(cfg, age_id, now.date()),
         "headline": headline, "actions": actions, "widget": widget, "settling": bool(st),
-        "dial": dial(items, day, feeds, nm, mode),
+        "dial": dl,
         "timeline": timeline(items, day, hi, nm),
         "totals": totals, "feed": feed,
         "feeds": [{"id": f["id"], "time": E.fmt(f["t"]), "ml": f["ml"]} for f in feeds],
@@ -511,6 +515,17 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
         if day.wake_real else None,
         "day_head": day_head(day, feeds) if mode == "night" else None,
     }
+
+
+def planned_feeds(items, first: int | None) -> list[dict]:
+    """Biberons prévus sur le cadran : toutes les 3 h à partir du prochain annoncé (minute first du jour),
+    jusqu'au coucher prévu. Une simple indication ; on précise quand l'un tombe pendant une sieste prévue."""
+    out, t, bed = [], first, items[-1]["start"]
+    while t is not None and t < bed and len(out) < 6:
+        nap = next((x for x in items if x["type"] == "nap" and x["start"] <= t < x["end"]), None)
+        out.append({"t": t, "label": E.fmt(t), "during": f"Sieste {nap['idx'] + 1}" if nap else None})
+        t += E.FEED_INTERVAL
+    return out
 
 
 def child_info(cfg: dict, age_id: str, today: date) -> dict:
