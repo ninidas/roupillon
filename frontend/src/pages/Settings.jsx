@@ -85,6 +85,21 @@ export default function Settings({ me, setMe, open, close, notify, onLogout, sta
         </section>
 
         <section>
+          <h2 className="section-h">Biberons</h2>
+          <div className="group">
+            <div className="cell" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+              <span className="ttl">Écart entre deux biberons</span>
+              <div className="seg-wrap"><div className="seg" role="group" aria-label="Écart entre deux biberons">
+                {[[150, '2 h 30'], [180, '3 h'], [210, '3 h 30'], [240, '4 h']].map(([v, l]) => (
+                  <button key={v} type="button" aria-pressed={s.feed_interval === v} onClick={() => put({ feed_interval: v }, `Un biberon toutes les ${l}`)}>{l}</button>
+                ))}
+              </div></div>
+            </div>
+          </div>
+          <p className="foot">Sert à annoncer le prochain biberon et à placer les biberons prévus sur le cadran. C'est un rappel : ses signes de faim passent avant.</p>
+        </section>
+
+        <section>
           <h2 className="section-h">Repères d'âge</h2>
           <div className="group">
             <div className="cell" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>

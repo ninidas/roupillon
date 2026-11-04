@@ -386,3 +386,18 @@ def test_mise_au_lit_sans_sieste(client, auth, clock):
     clock.set("2026-10-24 19:00")
     act("bed")
     assert client.get("/api/days/2026-10-24", headers=auth).json()["naps"] == []
+
+
+def test_ecart_des_biberons(client, auth, clock):
+    clock.set("2026-10-24 07:00")
+    client.post("/api/actions", headers=auth, json={"act": "wake"})
+    client.post("/api/actions", headers=auth, json={"act": "feed", "ml": 150})
+    t = client.get("/api/today", headers=auth).json()
+    assert t["feed"]["last"]["next"] == "10:00"
+    assert [f["label"] for f in t["dial"]["feeds_plan"]][:2] == ["10:00", "13:00"]
+    assert client.put("/api/settings", headers=auth, json={"feed_interval": 200}).status_code == 422
+    assert client.put("/api/settings", headers=auth, json={"feed_interval": 210}).json()["feed_interval"] == 210
+    t = client.get("/api/today", headers=auth).json()
+    assert t["feed"]["last"]["next"] == "10:30"
+    plan = t["dial"]["feeds_plan"]
+    assert [f["label"] for f in plan][:2] == ["10:30", "14:00"] and all(f["t"] < t["dial"]["bed"] + 1 for f in plan)

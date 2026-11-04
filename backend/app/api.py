@@ -415,6 +415,7 @@ class SettingsBody(BaseModel):
     birth_date: date | None = None
     manual_age: str | None = None
     sex: Literal["f", "m"] | None = None
+    feed_interval: Literal[150, 180, 210, 240] | None = None
 
 
 @router.put("/settings")
@@ -431,6 +432,8 @@ def put_settings(body: SettingsBody, user: models.User = Depends(current_user), 
         S.set_setting(db, "manual_age", body.manual_age)
     if "sex" in fields and body.sex:
         S.set_setting(db, "sex", body.sex)
+    if "feed_interval" in fields and body.feed_interval:
+        S.set_setting(db, "feed_interval", str(body.feed_interval))
     db.commit()
     return get_settings(user, db)
 

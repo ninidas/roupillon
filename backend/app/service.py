@@ -103,7 +103,17 @@ def settings(db: Session) -> dict:
         "birth_date": birth,
         "manual_age": get_setting(db, "manual_age"),
         "sex": get_setting(db, "sex"),
+        "feed_interval": feed_interval(db),
     }
+
+
+FEED_CHOICES = (150, 180, 210, 240)
+
+
+def feed_interval(db: Session) -> int:
+    """Écart entre deux biberons choisi dans les réglages (3 h par défaut)."""
+    v = get_setting(db, "feed_interval")
+    return int(v) if v and v.isdigit() and int(v) in FEED_CHOICES else E.FEED_INTERVAL
 
 
 def weight_on(db: Session, d: date):
@@ -486,7 +496,7 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
     if lf:
         t = parse(lf.start)
         ago = int((now - t).total_seconds() // 60)
-        nxt = t + timedelta(minutes=E.FEED_INTERVAL)
+        nxt = t + timedelta(minutes=cfg["feed_interval"])
         # Après le coucher, pas de biberon prévu : ils reprennent au lever (un réveil nocturne peut
         # en amener un, il se note alors comme d'habitude, sans être annoncé)
         after_bed = mode == "night" or (items[-1]["type"] == "bed" and nxt >= at(d, items[-1]["start"]))
@@ -498,7 +508,7 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
 
     dl = dial(items, day, feeds, nm, mode)
     first = E.minutes(nxt, d) if mode == "day" and feed["last"] and feed["last"]["next"] else None
-    dl["feeds_plan"] = planned_feeds(items, first)
+    dl["feeds_plan"] = planned_feeds(items, first, cfg["feed_interval"])
 
     return {
         "now": hm, "now_iso": iso(now), "date": d.isoformat(), "date_label": date_label(now.date()), "mode": mode,
@@ -517,14 +527,14 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
     }
 
 
-def planned_feeds(items, first: int | None) -> list[dict]:
-    """Biberons prévus sur le cadran : toutes les 3 h à partir du prochain annoncé (minute first du jour),
+def planned_feeds(items, first: int | None, every: int) -> list[dict]:
+    """Biberons prévus sur le cadran : à l'écart des réglages à partir du prochain annoncé (minute first du jour),
     jusqu'au coucher prévu. Une simple indication ; on précise quand l'un tombe pendant une sieste prévue."""
     out, t, bed = [], first, items[-1]["start"]
     while t is not None and t < bed and len(out) < 6:
         nap = next((x for x in items if x["type"] == "nap" and x["start"] <= t < x["end"]), None)
         out.append({"t": t, "label": E.fmt(t), "during": f"Sieste {nap['idx'] + 1}" if nap else None})
-        t += E.FEED_INTERVAL
+        t += every
     return out
 
 
