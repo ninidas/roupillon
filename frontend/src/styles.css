@@ -190,6 +190,7 @@ button.cell:active{background:var(--fill)}
 .i-eye{background:var(--label2)} .i-key{background:var(--green)} .i-user{background:var(--label2)} .i-bell{background:var(--red)}
 .badge{font-size:12px;font-weight:700;color:var(--green);margin-left:6px}
 .badge.todo{color:var(--orange)}
+.tl-note{display:block;font-size:13px;color:var(--label2);margin-top:1px}
 .empty{padding:16px;color:var(--label2);font-size:15px}
 .link{color:var(--indigo);background:none;border:0;padding:0;cursor:pointer;font-size:inherit}
 .danger{color:var(--red)}
@@ -273,6 +274,9 @@ button.cell:active{background:var(--fill)}
 .wheel-i.on{color:var(--label);font-weight:600;font-size:26px}
 .wheel-sep{position:relative;font-size:26px;font-weight:600;color:var(--label);margin-top:-3px}
 .when2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.when2.three{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.when2.three button{padding:10px 12px}
+.when2.three button b{font-size:21px}
 .when2 button{border:0;border-radius:16px;padding:10px 14px;background:var(--card);display:flex;flex-direction:column;align-items:flex-start;gap:2px;cursor:pointer;text-align:left;transition:box-shadow .2s}
 .when2 button span{font-size:13px;color:var(--label2)}
 .when2 button b{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}

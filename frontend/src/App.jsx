@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { act, api, ApiError, cachedToday, flushQueue, getToken, loadToday, ls, Offline, pending, setToken, setUnauthorizedHandler } from './api'
-import { FeedAmountSheet } from './components/EventSheet'
+import { AsleepSheet, FeedAmountSheet, shiftStamp } from './components/EventSheet'
 import { TabJournal, TabSettings, TabToday } from './components/Icons'
 import Journal from './pages/Journal'
 import { Login, Setup } from './pages/Login'
@@ -12,13 +12,6 @@ const TABS = [
   { id: 'journal', label: 'Journal', Icon: TabJournal },
   { id: 'settings', label: 'Réglages', Icon: TabSettings },
 ]
-const p2 = (n) => String(n).padStart(2, '0')
-// « 2026-10-24T11:06:00 » décalé de n minutes, au format attendu par le serveur
-function shiftStamp(s, n) {
-  const [d, t] = s.split('T'), [y, m, j] = d.split('-').map(Number), [h, mi] = t.split(':').map(Number)
-  const x = new Date(y, m - 1, j, h, mi - n)
-  return `${x.getFullYear()}-${p2(x.getMonth() + 1)}-${p2(x.getDate())}T${p2(x.getHours())}:${p2(x.getMinutes())}`
-}
 
 export default function App() {
   const [phase, setPhase] = useState('boot')
@@ -117,8 +110,11 @@ export default function App() {
       if (a !== 'feed') [5, 10, 15].forEach(n => acts.push({ label: `${n} min`, early: true, run: () => shift(r, n) }))
       notify(r.message, acts)
       if (a === 'feed') {
-        setSheet(<FeedAmountSheet feed={{ id: r.event_id, time: r.at.slice(11, 16) }} onClose={close}
+        setSheet(<FeedAmountSheet feed={{ id: r.event_id, time: r.at.slice(11, 16), at: r.at }} onClose={close}
           onDone={(msg) => { close(); refresh(); notify(msg) }} />)
+      }
+      if (r.ask_asleep) {
+        setSheet(<AsleepSheet ask={r.ask_asleep} onClose={close} onDone={(msg) => { close(); refresh(); notify(msg) }} />)
       }
     } catch (e) {
       notify(e instanceof ApiError ? e.message : "Rien n'a été noté, réessayez")

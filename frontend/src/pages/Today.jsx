@@ -5,7 +5,7 @@ import { Bed, Bottle, Check, Chevron, Eye, Moon, Pencil, Plus, Sun } from '../co
 import { DaySheet } from './Journal'
 import { api } from '../api'
 
-const ACT_ICON = { nap_start: Moon, nap_end: Sun, wake: Sun, bed: Bed, night_start: Eye, night_end: Moon }
+const ACT_ICON = { nap_lay: Bed, asleep: Moon, nap_start: Moon, nap_end: Sun, wake: Sun, bed: Bed, night_start: Eye, night_end: Moon }
 const HEAD_ICON = { moon: Moon, eye: Eye }
 const INI = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 const DAY_NAMES = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
@@ -235,9 +235,9 @@ function PastDay({ past, edit, editOn, openDay }) {
 // Ouvre la correction d'un fait de la frise (lever, sieste, coucher), réel ou encore prévu
 function editItem(edit, x) {
   if (x.type === 'wake') return edit({ kind: 'wake', event: x.real ? { id: x.id, start: x.time } : null, defaults: { start: x.time } })
-  if (x.type === 'bed') return edit({ kind: 'bed', event: x.real ? { id: x.id, start: x.time } : null, defaults: { start: x.time } })
+  if (x.type === 'bed') return edit({ kind: 'bed', event: x.real ? { id: x.id, start: x.time, asleep: x.asleep } : null, defaults: { start: x.time } })
   const real = x.start_real
-  return edit({ kind: 'nap', title: real ? x.label : `Noter la ${x.label.toLowerCase()}`, event: real ? { id: x.id, start: x.start, end: x.end_real ? x.end : '' } : null, defaults: { start: x.start } })
+  return edit({ kind: 'nap', title: real ? x.label : `Noter la ${x.label.toLowerCase()}`, event: real ? { id: x.id, start: x.start, end: x.end_real ? x.end : '', laid: x.laid } : null, defaults: { start: x.start } })
 }
 // Toucher le cadran : la sieste, le soleil ou la lune ouvrent la même correction que leur ligne dans la frise
 const pickOn = (items, edit, feeds = []) => (kind, idx) => {
@@ -279,7 +279,7 @@ function FaceSwitch({ face, setFace }) {
 // Toucher le cadran de nuit : le coucher, un réveil nocturne, un biberon ou le lever ouvrent leur correction.
 // bedDay : jour du coucher (les réveils nocturnes s'y rattachent) ; le lever et les biberons gardent leur propre jour.
 const pickNight = (nd, editOn, bedDay) => (kind, id) => {
-  if (kind === 'bed') return editOn(bedDay)({ kind: 'bed', event: { id: nd.bed_id, start: nd.bed_label } })
+  if (kind === 'bed') return editOn(bedDay)({ kind: 'bed', event: { id: nd.bed_id, start: nd.bed_label, asleep: nd.bed_asleep } })
   if (kind === 'wake') return nd.wake_id && editOn(nd.wake_day)({ kind: 'wake', event: { id: nd.wake_id, start: nd.wake_label } })
   if (kind === 'night') {
     const j = nd.wakes.findIndex(w => w.id === id)
@@ -307,7 +307,7 @@ function Timeline({ items, edit, live }) {
           const real = x.start_real
           return (
             <Row key={i} time={x.start} dot="moon" plan={!real} now={x.now}
-              title={<>{x.label}{real && !x.end_real && <span className="badge">en cours</span>}{!real && x.now && <span className="badge">{x.due ? 'maintenant' : 'ensuite'}</span>}</>}
+              title={<>{x.label}{real && !x.end_real && <span className="badge">en cours</span>}{!real && x.now && <span className="badge">{x.due ? 'maintenant' : 'ensuite'}</span>}{x.settle && <span className="tl-note">{x.settle}</span>}</>}
               right={real && !x.end_real ? `réveil ~${x.end}` : x.dur}
               onClick={() => editItem(edit, x)} />
           )
@@ -315,7 +315,7 @@ function Timeline({ items, edit, live }) {
         if (x.type === 'bed') return (
           <div key={i}>
             <Row time={x.time} dot="bed" plan={!x.real} now={x.now}
-              title={<>Coucher{!x.real && x.now && <span className="badge">ensuite</span>}</>}
+              title={<>Coucher{!x.real && x.now && <span className="badge">ensuite</span>}{x.settle && <span className="tl-note">{x.settle}</span>}</>}
               onClick={() => editItem(edit, x)} />
             {(x.night || []).map((w, j) => (
               <Row key={w.id} time={w.start} dot="eye" small title={`Réveil ${j + 1}`} right={w.end ? w.dur : 'en cours'}

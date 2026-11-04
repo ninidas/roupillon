@@ -204,12 +204,18 @@ def build_day(db: Session, d: date, evs: list | None = None) -> tuple[E.Day, lis
     if wakes:
         day.wake, day.wake_real, day.wake_id = mins(wakes[0].start), True, wakes[0].id
     beds = [e for e in evs if e.kind == "bed" and m0 + timedelta(hours=12) <= parse(e.start) < m0 + timedelta(hours=30)]
-    bed_dt = parse(beds[0].start) if beds else None
+    # Le coucher compte à la mise au lit, comme avant l'endormissement noté : le moteur n'a pas changé
+    bed_dt = parse(beds[0].laid or beds[0].start) if beds else None
     if beds:
-        day.bed, day.bed_id = mins(beds[0].start), beds[0].id
+        day.bed, day.bed_id = mins(beds[0].laid or beds[0].start), beds[0].id
     nap_end = bed_dt or m0 + timedelta(days=1)
-    day.naps = [E.Span(mins(e.start), mins(e.end), e.id) for e in evs
-                if e.kind == "nap" and m0 + timedelta(hours=4) <= parse(e.start) < nap_end]
+    # Une sieste « au lit » pas encore endormie n'est pas une sieste : la prévision attend l'endormissement
+    naps = [e for e in evs if e.kind == "nap" and m0 + timedelta(hours=4) <= parse(e.start) < nap_end
+            and not (e.settling and e.end is None)]
+    day.naps = [E.Span(mins(e.start), mins(e.end), e.id) for e in naps]
+    for e in naps + beds[:1]:
+        if e.laid and not e.settling:
+            day.settle[e.id] = (parse(e.start) - parse(e.laid)).total_seconds() / 60
     if bed_dt:
         next_wake = [e for e in evs if e.kind == "wake" and parse(e.start) > bed_dt]
         limit = parse(next_wake[0].start) if next_wake else bed_dt + timedelta(hours=18)
@@ -218,6 +224,28 @@ def build_day(db: Session, d: date, evs: list | None = None) -> tuple[E.Day, lis
     feeds = [{"id": e.id, "t": mins(e.start), "ml": e.ml} for e in evs
              if e.kind == "feed" and parse(e.start).date() == d]
     return day, feeds
+
+
+SETTLE_DAYS = 7
+
+
+def settle_stats(db: Session, d: date) -> dict:
+    """Temps moyen pour s'endormir sur les 7 dernières journées (celle en cours comprise), par sieste et le soir."""
+    first = d - timedelta(days=SETTLE_DAYS - 1)
+    evs = events_between(db, midnight(first), midnight(d) + timedelta(days=2))
+    by_rank, nights = {}, []
+    for k in range(SETTLE_DAYS):
+        day, _ = build_day(db, d - timedelta(days=k), evs)
+        for i, n in enumerate(day.naps):
+            if n.id in day.settle:
+                by_rank.setdefault(i, []).append(day.settle[n.id])
+        if day.bed_id in day.settle:
+            nights.append(day.settle[day.bed_id])
+    row = lambda label, xs: {"label": label, "mean": E.dur(sum(xs) / len(xs)), "n": len(xs)}
+    rows = [row(f"Sieste {i + 1}", by_rank[i]) for i in sorted(by_rank)]
+    if nights:
+        rows.append(row("Coucher", nights))
+    return {"rows": rows, "days": SETTLE_DAYS}
 
 
 def current(db: Session, now: datetime) -> tuple[str, date]:
@@ -232,6 +260,23 @@ def current(db: Session, now: datetime) -> tuple[str, date]:
     if now.hour < 4 and not events_between(db, midnight(d), now + timedelta(minutes=1), ("wake",)):
         d -= timedelta(days=1)
     return "day", d
+
+
+def settle_text(m: float) -> str:
+    return "endormie tout de suite" if m < 1 else f"endormie en {E.dur(m)}"
+
+
+SETTLE_NIGHT = 90    # minutes : un endormissement du soir jamais noté est oublié au-delà
+
+
+def settling(db: Session, now: datetime):
+    """Mise au lit en attente de « Endormie » : une sieste jusqu'à son réveil, le coucher 90 minutes au plus."""
+    evs = events_between(db, now - timedelta(hours=4), now + timedelta(minutes=1), ("nap", "bed"))
+    for e in reversed(evs):
+        if e.settling and e.end is None and e.laid:
+            if e.kind == "nap" or now - parse(e.laid) <= timedelta(minutes=SETTLE_NIGHT):
+                return e
+    return None
 
 
 def habits(db: Session, d: date) -> dict:
@@ -284,6 +329,7 @@ def night_view(db: Session, d: date, day: E.Day, nm: int | None = None, est: flo
         "bed": day.bed, "wake": end, "now": nm if nm is not None else -1, "wake_real": real,
         "bed_id": day.bed_id, "wake_id": nxt.wake_id if real else None, "wake_day": (d + timedelta(days=1)).isoformat(),
         "bed_label": E.fmt(day.bed), "wake_label": E.fmt(wake),
+        "bed_asleep": E.fmt(day.bed + day.settle[day.bed_id]) if day.bed_id in day.settle else "",
         "wakes": [{"id": w.id, "start": w.start, "end": w.end, "start_hm": E.fmt(w.start),
                    "end_hm": E.fmt(w.end) if w.end is not None else ""} for w in day.night if w.start is not None],
         "feeds": feeds, "head": head,
@@ -397,9 +443,27 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
         elif not day.wake_real and not day.naps and nm < 12 * 60:
             actions = [btn("wake", "Elle est levée", "awake", hm), btn("nap_start", "Elle dort", "ghost")]
         elif nm >= bed_item["start"] - 60 or nm >= 17 * 60 + 30:
-            actions = [btn("bed", "Elle est couchée", "night", hm), btn("nap_start", "Sieste", "ghost")]
+            actions = [btn("bed", "Elle est couchée", "night", hm), btn("nap_lay", "Sieste", "ghost")]
         else:
-            actions = [btn("nap_start", "Elle dort", "nap", hm)]
+            # « Au lit » puis « Endormie » mesure le temps pour s'endormir ; « Elle dort » note directement l'endormissement
+            actions = [btn("nap_lay", "Au lit", "nap", hm), btn("nap_start", "Elle dort", "ghost")]
+
+    # Au lit, pas encore endormie : on attend « Endormie » (la sieste ou la nuit ne commence qu'alors)
+    st = settling(db, now)
+    if st:
+        laid = E.minutes(parse(st.laid), d)
+        nxt = next((x for x in items if x["type"] == "nap" and not x["start_real"]), None)
+        label = "Nuit" if st.kind == "bed" else f"Sieste {nxt['idx'] + 1}" if nxt else "Sieste"
+        ends = [n.end for n in day.naps if n.end is not None]
+        awake_from = ends[-1] if ends else day.wake
+        headline = {"cap": "S'endort depuis", "big": E.dur(max(0, nm - laid)), "icon": "moon",
+                    "sub": f"{label} · au lit à {E.fmt(laid)}"}
+        actions = [btn("asleep", "Endormie", "nap", hm)]
+        if st.kind == "nap":
+            actions.append(btn("nap_end", "Déjà réveillée", "ghost"))
+        widget = {"state": "settling", "title": "Au lit, s'endort", "line": f"au lit depuis {E.fmt(laid)}",
+                  "message": f"Au lit depuis {E.fmt(laid)} · touchez quand elle dort",
+                  "since": iso(at(d, awake_from))}
 
     # Totaux
     slept = 0
@@ -435,7 +499,7 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
     return {
         "now": hm, "now_iso": iso(now), "date": d.isoformat(), "date_label": date_label(now.date()), "mode": mode,
         "child": child_info(cfg, age_id, now.date()),
-        "headline": headline, "actions": actions, "widget": widget,
+        "headline": headline, "actions": actions, "widget": widget, "settling": bool(st),
         "dial": dial(items, day, feeds, nm, mode),
         "timeline": timeline(items, day, hi, nm),
         "totals": totals, "feed": feed,
@@ -483,10 +547,14 @@ def timeline(items, day, hi, nm) -> list[dict]:
             out.append({"type": "nap", "id": x["id"], "idx": x["idx"], "label": f"Sieste {x['idx'] + 1}",
                         "start": E.fmt(x["start"]), "end": E.fmt(x["end"]), "dur": E.dur(x["end"] - x["start"]),
                         "start_real": x["start_real"], "end_real": x["end_real"], "now": x is hi,
+                        "settle": settle_text(day.settle[x["id"]]) if x["id"] in day.settle else None,
+                        "laid": E.fmt(x["start"] - day.settle[x["id"]]) if x["id"] in day.settle else "",
                         "due": not x["start_real"] and x["start"] <= nm,
                         "past": not x["start_real"] and x["end"] <= nm})
         elif x["type"] == "bed":
             out.append({"type": "bed", "id": x["id"], "time": E.fmt(x["start"]), "real": x["real"], "late": x["late"],
+                        "settle": settle_text(day.settle[x["id"]]) if x["id"] in day.settle else None,
+                        "asleep": E.fmt(x["start"] + day.settle[x["id"]]) if x["id"] in day.settle else "",
                         "now": x is hi,
                         "night": [{"id": w.id, "start": E.fmt(w.start), "end": E.fmt(w.end) if w.end is not None else None,
                                    "dur": E.dur(real_dur(day.date, w.start, w.end)) if w.end is not None else None} for w in day.night]})
@@ -550,8 +618,12 @@ def day_detail(db: Session, d: date) -> dict:
         "wake": {"id": day.wake_id, "time": E.fmt(day.wake), "real": day.wake_real},
         "naps": [{"id": n.id, "label": f"Sieste {i + 1}", "start": E.fmt(n.start),
                   "end": E.fmt(n.end) if n.end is not None else None,
-                  "dur": E.dur(n.end - n.start) if n.end is not None else None} for i, n in enumerate(day.naps)],
-        "bed": {"id": day.bed_id, "time": E.fmt(day.bed)} if day.bed is not None else None,
+                  "dur": E.dur(n.end - n.start) if n.end is not None else None,
+                  "laid": E.fmt(n.start - day.settle[n.id]) if n.id in day.settle else "",
+                  "settle": settle_text(day.settle[n.id]) if n.id in day.settle else None} for i, n in enumerate(day.naps)],
+        "bed": {"id": day.bed_id, "time": E.fmt(day.bed),
+                "asleep": E.fmt(day.bed + day.settle[day.bed_id]) if day.bed_id in day.settle else "",
+                "settle": settle_text(day.settle[day.bed_id]) if day.bed_id in day.settle else None} if day.bed is not None else None,
         "night": [{"id": w.id, "start": E.fmt(w.start), "end": E.fmt(w.end) if w.end is not None else None,
                    "dur": E.dur(real_dur(d, w.start, w.end)) if w.end is not None else None} for w in day.night],
         "feeds": [{"id": f["id"], "time": E.fmt(f["t"]), "ml": f["ml"]} for f in feeds],

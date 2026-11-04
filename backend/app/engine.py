@@ -117,6 +117,8 @@ class Day:
     bed: int | None = None
     bed_id: int | None = None
     night: list[Span] = field(default_factory=list)
+    # Minutes entre la mise au lit et l'endormissement, par id de sieste ou de coucher (quand elles sont notées)
+    settle: dict = field(default_factory=dict)
 
 
 def evening(age: dict, hab: dict) -> dict:

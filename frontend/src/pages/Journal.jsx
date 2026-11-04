@@ -75,8 +75,34 @@ export default function Journal({ open, close, notify, status, version }) {
               : "Pour l'instant, les prévisions suivent les repères de son âge. Elles s'adapteront d'elles-mêmes à mesure que vous noterez ses journées."}
           </p>
         </section>
+
+        <Settle s={h.settle} />
       </>}
     </div>
+  )
+}
+
+// Temps pour s'endormir, mesuré entre « Au lit » et « Endormie », en moyenne sur les derniers jours
+function Settle({ s }) {
+  return (
+    <section>
+      <h2 className="section-h">Endormissement</h2>
+      <div className="group">
+        {s.rows.length ? (
+          <div className="rhythm">
+            <span /><span className="rh-h">Temps moyen</span><span className="rh-h">Mesuré</span>
+            {s.rows.map(r => (
+              <Fragment key={r.label}>
+                <span className="rh-l">{r.label}</span>
+                <span><b>{r.mean}</b></span>
+                <span><small>{r.n} fois</small></span>
+              </Fragment>
+            ))}
+          </div>
+        ) : <div className="empty">Touchez « Au lit » en la couchant, puis « Endormie » quand elle dort : le temps qu'elle met à s'endormir apparaîtra ici.</div>}
+      </div>
+      <p className="foot">Sur les {s.days} derniers jours, à titre indicatif. Beaucoup de bébés mettent 10 à 20 minutes. Bien plus long, elle n'était peut-être pas encore assez fatiguée ; presque tout de suite, elle l'était peut-être déjà beaucoup.</p>
+    </section>
   )
 }
 
@@ -183,17 +209,17 @@ export function DaySheet({ date, title, onClose, notify }) {
             <span className="val">{d.wake.real ? d.wake.time : ''}</span><Chevron />
           </button>
           {d.naps.map(n => (
-            <button key={n.id} type="button" className="cell ic" onClick={() => setEdit({ kind: 'nap', title: n.label, event: { id: n.id, start: n.start, end: n.end || '' } })}>
+            <button key={n.id} type="button" className="cell ic" onClick={() => setEdit({ kind: 'nap', title: n.label, event: { id: n.id, start: n.start, end: n.end || '', laid: n.laid } })}>
               <span className="icon i-moon"><Moon /></span>
-              <span className="grow"><span className="ttl">{n.label}</span><span className="sub2" style={{ display: 'block' }}>{n.start} à {n.end || '...'}{n.dur ? ` · ${n.dur}` : ''}</span></span><Chevron />
+              <span className="grow"><span className="ttl">{n.label}</span><span className="sub2" style={{ display: 'block' }}>{n.start} à {n.end || '...'}{n.dur ? ` · ${n.dur}` : ''}{n.settle ? ` · ${n.settle}` : ''}</span></span><Chevron />
             </button>
           ))}
           <button type="button" className="addrow" onClick={() => setEdit({ kind: 'nap', title: 'Sieste oubliée', event: null })}><Plus />Ajouter une sieste</button>
         </div>
 
         <div className="group">
-          <button type="button" className="cell ic" onClick={() => setEdit({ kind: 'bed', event: d.bed ? { id: d.bed.id, start: d.bed.time } : null })}>
-            <span className="icon i-bed"><Bed /></span><span className="grow ttl">Coucher</span>
+          <button type="button" className="cell ic" onClick={() => setEdit({ kind: 'bed', event: d.bed ? { id: d.bed.id, start: d.bed.time, asleep: d.bed.asleep } : null })}>
+            <span className="icon i-bed"><Bed /></span><span className="grow"><span className="ttl">Coucher</span>{d.bed?.settle && <span className="sub2" style={{ display: 'block' }}>{d.bed.settle}</span>}</span>
             <span className="val">{d.bed ? d.bed.time : 'non noté'}</span><Chevron />
           </button>
           {d.night.map((w, j) => (

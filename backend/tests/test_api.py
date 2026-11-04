@@ -43,6 +43,10 @@ def test_journee_complete(client, auth, clock):
     clock.set("2026-10-24 19:30")
     r = act(client, auth, "bed")
     assert r.json()["today"]["mode"] == "night"
+    # couchée : l'app attend « Endormie », puis propose le réveil nocturne
+    assert [a["act"] for a in r.json()["today"]["actions"]] == ["asleep"]
+    clock.set("2026-10-24 19:45")
+    r = act(client, auth, "asleep")
     assert [a["act"] for a in r.json()["today"]["actions"]] == ["night_start"]
 
     clock.set("2026-10-24 23:10")
@@ -120,7 +124,11 @@ def test_widget_et_raccourcis(client, auth, clock):
     clock.set("2026-10-24 08:00")
     s = client.get("/api/quick/status", headers=k).json()
     assert s["state"] == "awake" and s["target"].startswith("2026-10-24T")
-    assert client.post("/api/quick/toggle", headers=k).json()["message"] == "Sieste 1 commencée à 08:00"
+    # premier toucher : au lit ; deuxième : endormie
+    assert client.post("/api/quick/toggle", headers=k).json()["message"].startswith("Au lit à 08:00")
+    assert client.get("/api/quick/status", headers=k).json()["state"] == "settling"
+    clock.set("2026-10-24 08:10")
+    assert client.post("/api/quick/toggle", headers=k).json()["message"] == "Endormie à 08:10, en 10 min"
     clock.set("2026-10-24 08:45")
     s = client.get("/api/quick/status", headers=k).json()
     # l'app met « Réveil estimé » au-dessus de l'heure ; le menu du widget garde l'heure dans son message
@@ -158,7 +166,7 @@ def test_raccourci_en_texte(client, auth, clock):
     key = client.post("/api/me/widget-key", headers=auth).json()["key"]
     clock.set("2026-10-24 08:00")
     r = client.post("/api/quick/toggle?text=1", headers={"X-Roupillon-Key": key})
-    assert r.text == "Sieste 1 commencée à 08:00"
+    assert r.text == "Au lit à 08:00. Touchez « Endormie » quand elle dort"
     r = client.post("/api/quick/feed?text=1", headers={"X-Roupillon-Key": key})
     assert r.text == "Biberon à 08:00"
 
@@ -308,3 +316,73 @@ def test_taille(client, auth, clock):
     assert len(g["height_curves"]["p50"]) == len(g["height_curves"]["days"])
     assert client.delete(f"/api/heights/{h['id']}", headers=auth).json() == {"deleted": 1}
     assert len(client.get("/api/growth", headers=auth).json()["heights"]) == 1
+
+
+def test_endormissement(client, auth, clock):
+    act = lambda a: client.post("/api/actions", headers=auth, json={"act": a})
+    clock.set("2026-10-24 07:00")
+    act("wake")
+    clock.set("2026-10-24 08:30")
+    r = act("nap_lay").json()
+    assert r["field"] == "laid" and r["today"]["settling"] and r["today"]["headline"]["cap"] == "S'endort depuis"
+    assert [a["act"] for a in r["today"]["actions"]] == ["asleep", "nap_end"]
+    # au lit n'est pas encore une sieste : la prévision attend l'endormissement
+    assert not any(n["start_real"] for n in r["today"]["dial"]["naps"])
+    assert act("nap_lay").status_code == 409
+    # « Elle dort » pendant la mise au lit = l'endormissement
+    clock.set("2026-10-24 08:42")
+    r = act("nap_start").json()
+    assert r["message"] == "Endormie à 08:42, en 12 min"
+    nap = next(x for x in r["today"]["timeline"] if x["type"] == "nap")
+    assert nap["start"] == "08:42" and nap["settle"] == "endormie en 12 min" and nap["start_real"]
+    # Annuler remet au lit
+    ev = r["event_id"]
+    client.patch(f"/api/events/{ev}", headers=auth, json={"start": "2026-10-24T08:30", "settling": True})
+    assert client.get("/api/today", headers=auth).json()["settling"]
+    # réveillée sans « Endormie » : l'app demande l'heure d'endormissement
+    clock.set("2026-10-24 09:40")
+    r = act("nap_end").json()
+    assert r["ask_asleep"] == {"id": ev, "laid": "08:30", "end": "09:40"}
+    assert client.patch(f"/api/events/{ev}", headers=auth, json={"start": "08:50", "day": "2026-10-24"}).status_code == 200
+    t = client.get("/api/today", headers=auth).json()
+    nap = next(x for x in t["timeline"] if x["type"] == "nap")
+    assert (nap["start"], nap["end"], nap["settle"]) == ("08:50", "09:40", "endormie en 20 min") and not t["settling"]
+    # au lit après l'endormissement : refusé
+    assert client.patch(f"/api/events/{ev}", headers=auth, json={"laid": "09:00", "day": "2026-10-24"}).status_code == 422
+    # le soir : couchée, puis endormie ; le coucher reste compté à la mise au lit
+    clock.set("2026-10-24 19:00")
+    r = act("bed").json()
+    assert r["today"]["mode"] == "night" and r["today"]["settling"] and r["today"]["actions"][0]["act"] == "asleep"
+    clock.set("2026-10-24 19:25")
+    assert act("asleep").json()["message"] == "Endormie à 19:25, en 25 min"
+    t = client.get("/api/today", headers=auth).json()
+    bed = next(x for x in t["timeline"] if x["type"] == "bed")
+    assert bed["time"] == "19:00" and bed["settle"] == "endormie en 25 min" and not t["settling"]
+    h = client.get("/api/history", headers=auth).json()["settle"]
+    assert [(r["label"], r["mean"]) for r in h["rows"]] == [("Sieste 1", "20 min"), ("Coucher", "25 min")]
+
+
+def test_endormissement_du_soir_oublie(client, auth, clock):
+    act = lambda a: client.post("/api/actions", headers=auth, json={"act": a})
+    clock.set("2026-10-24 07:00")
+    act("wake")
+    clock.set("2026-10-24 19:00")
+    act("bed")
+    # 90 minutes plus tard, l'attente est oubliée : le raccourci note un réveil nocturne comme avant
+    clock.set("2026-10-24 23:00")
+    t = client.get("/api/today", headers=auth).json()
+    assert not t["settling"] and t["actions"][0]["act"] == "night_start"
+    key = client.post("/api/me/widget-key", headers=auth).json()["key"]
+    assert client.post("/api/quick/toggle", headers={"X-Roupillon-Key": key}).json()["message"] == "Réveil nocturne à 23:00"
+
+
+def test_mise_au_lit_sans_sieste(client, auth, clock):
+    act = lambda a: client.post("/api/actions", headers=auth, json={"act": a})
+    clock.set("2026-10-24 07:00")
+    act("wake")
+    clock.set("2026-10-24 17:00")
+    act("nap_lay")
+    # elle ne s'est pas endormie, on passe au coucher : la mise au lit disparaît
+    clock.set("2026-10-24 19:00")
+    act("bed")
+    assert client.get("/api/days/2026-10-24", headers=auth).json()["naps"] == []

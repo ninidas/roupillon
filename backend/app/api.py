@@ -140,7 +140,7 @@ def today(user: models.User = Depends(current_user), db: Session = Depends(get_d
 
 
 class ActionBody(BaseModel):
-    act: Literal["wake", "nap_start", "nap_end", "bed", "night_start", "night_end", "feed"]
+    act: Literal["wake", "nap_start", "nap_lay", "asleep", "nap_end", "bed", "night_start", "night_end", "feed"]
     at: Stamp | None = None     # heure du geste sur le téléphone (envoi différé hors connexion)
     ml: Ml | None = None
 
@@ -166,6 +166,8 @@ def action(body: ActionBody, user: models.User = Depends(current_user), db: Sess
 class EventPatch(BaseModel):
     start: Hhmm | Stamp | None = None
     end: Hhmm | Stamp | None = None
+    laid: Hhmm | Stamp | None = None    # mise au lit (siestes et coucher), None = pas notée
+    settling: bool | None = None        # remis seulement par « Annuler » après « Endormie »
     ml: Ml | None = None
     day: date | None = None     # journée de référence d'une heure « HH:MM »
 
@@ -175,6 +177,7 @@ class EventNew(BaseModel):
     day: date
     start: Hhmm
     end: Hhmm | None = None
+    laid: Hhmm | None = None
     ml: Ml | None = None
 
 
@@ -194,6 +197,15 @@ def check_span(kind: str, start: datetime, end: datetime | None) -> None:
         raise HTTPException(status_code=422, detail="L'heure de fin doit être après celle du début")
     if end - start > timedelta(hours=8):
         raise HTTPException(status_code=422, detail="Plus de 8 heures : vérifiez les heures")
+
+
+def check_laid(start: datetime, laid: datetime | None) -> None:
+    if laid is None:
+        return
+    if laid > start:
+        raise HTTPException(status_code=422, detail="La mise au lit doit être avant l'endormissement")
+    if start - laid > timedelta(hours=3):
+        raise HTTPException(status_code=422, detail="Plus de 3 heures pour s'endormir : vérifiez les heures")
 
 
 def event_day(ev: models.Event) -> date:
@@ -216,13 +228,16 @@ def add_event(body: EventNew, user: models.User = Depends(current_user), db: Ses
     start = to_dt(body.start, body.kind, body.day)
     end = to_dt(body.end, body.kind, body.day) if body.end and body.kind in ("nap", "night") else None
     check_span(body.kind, start, end)
+    laid = to_dt(body.laid, body.kind, body.day) if body.laid and body.kind in ("nap", "bed") else None
+    check_laid(start, laid)
     if start > S.now_local() + timedelta(minutes=5):
         raise HTTPException(status_code=422, detail="Cette heure n'est pas encore passée")
     ev = single_per_day(db, body.kind, body.day)
     if ev:
-        ev.start, ev.updated_by = S.stamp(start), user.id
+        ev.start, ev.laid, ev.settling, ev.updated_by = S.stamp(start), S.stamp(laid) if laid else None, None, user.id
     else:
         ev = models.Event(kind=body.kind, start=S.stamp(start), end=S.stamp(end) if end else None,
+                          laid=S.stamp(laid) if laid else None,
                           ml=body.ml if body.kind == "feed" else None, created_by=user.id, updated_by=user.id)
         db.add(ev)
     db.commit()
@@ -241,9 +256,22 @@ def edit_event(event_id: int, body: EventPatch, user: models.User = Depends(curr
     if "end" in fields:
         end = to_dt(body.end, ev.kind, day) if body.end and ev.kind in ("nap", "night") else None
     check_span(ev.kind, start, end)
+    laid = S.parse(ev.laid) if ev.laid else None
+    settling = bool(ev.settling)
+    if "laid" in fields and ev.kind in ("nap", "bed"):
+        laid = to_dt(body.laid, ev.kind, day) if body.laid else None
+    if "settling" in fields:
+        settling = bool(body.settling)
+    elif "start" in fields:
+        settling = False    # l'heure d'endormissement est maintenant connue
+    settling = settling and laid is not None
+    if settling:
+        start = laid        # au lit, pas encore endormie : les deux heures bougent ensemble
+    check_laid(start, laid)
     if start > S.now_local() + timedelta(minutes=5):
         raise HTTPException(status_code=422, detail="Cette heure n'est pas encore passée")
     ev.start, ev.end = S.stamp(start), S.stamp(end) if end else None
+    ev.laid, ev.settling = S.stamp(laid) if laid else None, 1 if settling else None
     if "ml" in fields and ev.kind == "feed":
         ev.ml = body.ml
     ev.updated_by = user.id
@@ -304,7 +332,7 @@ def history(days: int = 30, user: models.User = Depends(current_user), db: Sessi
                "bed": f"{E.fmt(ev['bed_min'])} à {E.fmt(ev['bed_max'])}",
                "bed_ref": f"{E.fmt(age['bed_min'])} à {E.fmt(age['bed_max'])}",
                "usual": E.fmt(hab["bedtime"][0]) if hab.get("bedtime") else None}
-    return {"days": out, "rhythm": rows, "learned_days": learned, "evening": evening,
+    return {"days": out, "rhythm": rows, "learned_days": learned, "evening": evening, "settle": S.settle_stats(db, d0),
             "ref_24h": {"lo": lo * 60, "hi": hi * 60, "label": S.REF_24H[S.age_for(cfg, now.date())]}}
 
 

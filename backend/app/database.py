@@ -33,6 +33,6 @@ def migrate():
     """Colonnes ajoutées après la création de la base : create_all ne touche pas aux tables existantes."""
     with engine.begin() as conn:
         cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(events)")}
-        for col in ("planned_start", "planned_end"):
+        for col, typ in (("planned_start", "VARCHAR"), ("planned_end", "VARCHAR"), ("laid", "VARCHAR"), ("settling", "INTEGER")):
             if col not in cols:
-                conn.exec_driver_sql(f"ALTER TABLE events ADD COLUMN {col} VARCHAR")
+                conn.exec_driver_sql(f"ALTER TABLE events ADD COLUMN {col} {typ}")

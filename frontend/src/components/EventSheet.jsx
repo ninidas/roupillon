@@ -4,17 +4,29 @@ import Sheet from './Sheet'
 import TimeWheel from './TimeWheel'
 
 const LABELS = {
-  nap: { title: 'Sieste', start: 'Endormie à', end: 'Réveillée à' },
+  nap: { title: 'Sieste', laid: 'Au lit à', start: 'Endormie à', end: 'Réveillée à' },
   night: { title: 'Réveil nocturne', start: 'Réveillée à', end: 'Rendormie à' },
   wake: { title: 'Lever', start: 'Levée à' },
-  bed: { title: 'Coucher', start: 'Couchée à' },
+  bed: { title: 'Coucher', start: 'Couchée à', asleep: 'Endormie à' },
   feed: { title: 'Biberon', start: 'Heure' },
 }
 export const ML = [60, 90, 120, 150, 180, 210]
 
+const p2 = (n) => String(n).padStart(2, '0')
 function nowHM() {
   const d = new Date()
-  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
+  return p2(d.getHours()) + ':' + p2(d.getMinutes())
+}
+// « 14:50 » décalé de n minutes
+function addHM(hm, n) {
+  const [h, m] = hm.split(':').map(Number), t = ((h * 60 + m + n) % 1440 + 1440) % 1440
+  return p2(Math.floor(t / 60)) + ':' + p2(t % 60)
+}
+// « 2026-10-24T11:06:00 » reculé de n minutes, au format attendu par le serveur
+export function shiftStamp(s, n) {
+  const [d, t] = s.split('T'), [y, m, j] = d.split('-').map(Number), [h, mi] = t.split(':').map(Number)
+  const x = new Date(y, m - 1, j, h, mi - n)
+  return `${x.getFullYear()}-${p2(x.getMonth() + 1)}-${p2(x.getDate())}T${p2(x.getHours())}:${p2(x.getMinutes())}`
 }
 
 // Saisie ou correction d'un fait de la journée. event : {id, start, end, ml} existant, ou null pour un ajout.
@@ -22,12 +34,18 @@ export default function EventSheet({ kind, day, event, title, defaults = {}, onC
   const L = LABELS[kind]
   const [start, setStart] = useState(event?.start || defaults.start || nowHM())
   const [end, setEnd] = useState(event?.end || defaults.end || '')
+  // Sieste : mise au lit avant l'endormissement. Coucher : endormissement après la mise au lit. Vides si non notés.
+  const [laid, setLaid] = useState(event?.laid || '')
+  const [asleep, setAsleep] = useState(event?.asleep || '')
   const [ml, setMl] = useState(event?.ml ?? '')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const span = kind === 'nap' || kind === 'night'
   const [field, setField] = useState('start')   // l'heure que la roue modifie
   const pickEnd = () => { if (!end) setEnd(nowHM()); setField('end') }
+  const pickLaid = () => { if (!laid) setLaid(start); setField('laid') }
+  const pickAsleep = () => { if (!asleep) setAsleep(start); setField('asleep') }
+  const wheel = { start: [start, setStart], end: [end || start, setEnd], laid: [laid || start, setLaid], asleep: [asleep || start, setAsleep] }[field]
   const stepMl = (d) => setMl(v => Math.max(0, Math.min(400, (Number(v) || 0) + d)))
 
   async function save() {
@@ -35,13 +53,17 @@ export default function EventSheet({ kind, day, event, title, defaults = {}, onC
     setBusy(true); setErr('')
     const mlv = ml === '' ? null : Number(ml)
     try {
+      // Le serveur garde l'endormissement dans start et la mise au lit à part
+      const times = kind === 'nap' ? { start, laid: laid || null }
+        : kind === 'bed' ? (asleep ? { start: asleep, laid: start } : { start, laid: null })
+        : { start }
       if (event?.id) {
-        const body = { start, day }
+        const body = { ...times, day }
         if (span) body.end = end || null
         if (kind === 'feed') body.ml = mlv
         await api(`/events/${event.id}`, { method: 'PATCH', body })
       } else {
-        await api('/events', { method: 'POST', body: { kind, day, start, end: span && end ? end : null, ml: kind === 'feed' ? mlv : null } })
+        await api('/events', { method: 'POST', body: { kind, day, ...times, end: span && end ? end : null, ml: kind === 'feed' ? mlv : null } })
       }
       onDone('Enregistré')
     } catch (e) {
@@ -56,18 +78,34 @@ export default function EventSheet({ kind, day, event, title, defaults = {}, onC
   return (
     <Sheet title={title || L.title} onClose={onClose}
       action={<button type="button" className="link" style={{ fontWeight: 600 }} disabled={busy} onClick={save}>OK</button>}>
-      {span ? (
-        // Deux heures : on choisit laquelle la roue règle
-        <div className="when2" role="tablist">
+      {span || kind === 'bed' ? (
+        // Plusieurs heures : on choisit laquelle la roue règle
+        <div className={`when2${kind === 'nap' ? ' three' : ''}`} role="tablist">
+          {kind === 'nap' && (
+            <button type="button" role="tab" aria-selected={field === 'laid'} onClick={pickLaid}>
+              <span>{L.laid}</span><b className="rd">{laid || '–'}</b>
+            </button>
+          )}
           <button type="button" role="tab" aria-selected={field === 'start'} onClick={() => setField('start')}>
             <span>{L.start}</span><b className="rd">{start}</b>
           </button>
-          <button type="button" role="tab" aria-selected={field === 'end'} onClick={pickEnd}>
-            <span>{L.end}</span><b className="rd">{end || 'en cours'}</b>
-          </button>
+          {span ? (
+            <button type="button" role="tab" aria-selected={field === 'end'} onClick={pickEnd}>
+              <span>{L.end}</span><b className="rd">{end || 'en cours'}</b>
+            </button>
+          ) : (
+            <button type="button" role="tab" aria-selected={field === 'asleep'} onClick={pickAsleep}>
+              <span>{L.asleep}</span><b className="rd">{asleep || '–'}</b>
+            </button>
+          )}
         </div>
       ) : <div className="when1">{L.start}</div>}
-      <TimeWheel value={field === 'end' && end ? end : start} onChange={field === 'end' ? setEnd : setStart} />
+      <TimeWheel value={wheel[0]} onChange={wheel[1]} />
+      {(field === 'laid' && laid) || (field === 'asleep' && asleep) ? (
+        <div className="quick indigo">
+          <button type="button" onClick={() => { field === 'laid' ? setLaid('') : setAsleep(''); setField('start') }}>Pas notée</button>
+        </div>
+      ) : null}
       {span && field === 'end' && end && (
         <div className="quick indigo">
           <button type="button" onClick={() => setEnd(nowHM())}>Maintenant</button>
@@ -99,19 +137,64 @@ export default function EventSheet({ kind, day, event, title, defaults = {}, onC
   )
 }
 
-// Après « Biberon » : la quantité en un geste, ou la quantité exacte qu'elle a bue
+// Réveillée alors que l'endormissement n'avait pas été noté : vers quand s'est-elle endormie ?
+export function AsleepSheet({ ask, onClose, onDone }) {
+  const [busy, setBusy] = useState(false)
+  const [h, m] = ask.laid.split(':').map(Number), [eh, em] = ask.end.split(':').map(Number)
+  const max = ((eh * 60 + em) - (h * 60 + m) + 1440) % 1440
+  const offs = [0, 5, 10, 15, 20, 30, 45].filter(n => n < max)
+  async function run(body, msg) {
+    setBusy(true)
+    try {
+      await (body ? api(`/events/${ask.id}`, { method: 'PATCH', body }) : api(`/events/${ask.id}`, { method: 'DELETE' }))
+      onDone(msg)
+    } catch { onClose() }
+  }
+  return (
+    <Sheet title="Endormie vers quand ?" onClose={onClose}>
+      <p className="sub2" style={{ margin: 0 }}>Au lit à {ask.laid}, réveillée à {ask.end}.</p>
+      <div className="quick" style={{ gap: 10 }}>
+        {offs.map(n => (
+          <button key={n} type="button" disabled={busy} style={{ fontSize: 17, padding: '12px 18px' }}
+            onClick={() => run({ start: addHM(ask.laid, n) }, `Endormie à ${addHM(ask.laid, n)}`)}>
+            {n ? `${addHM(ask.laid, n)} · ${n} min` : 'Tout de suite'}
+          </button>
+        ))}
+      </div>
+      <button type="button" className="secondary blue" disabled={busy} onClick={() => run({ laid: null }, 'Endormissement non noté')}>Je ne sais pas</button>
+      <button type="button" className="secondary" disabled={busy} onClick={() => run(null, 'Sieste retirée')}>Elle n'a pas dormi</button>
+    </Sheet>
+  )
+}
+
+// Après « Biberon » : quand il a commencé, la quantité en un geste, ou la quantité exacte qu'elle a bue
+const BACK = [0, 10, 15, 20]
 export function FeedAmountSheet({ feed, onClose, onDone }) {
   const [ml, setMl] = useState('')
   const [busy, setBusy] = useState(false)
+  const [back, setBack] = useState(0)
+  const time = feed.at ? shiftStamp(feed.at, back).slice(11, 16) : feed.time
+  // Noté à la fin du biberon : on recule son heure au début, pour que le prochain soit bien annoncé
+  async function moveBack(n) {
+    const prev = back
+    setBack(n)
+    try { await api(`/events/${feed.id}`, { method: 'PATCH', body: { start: shiftStamp(feed.at, n) } }) } catch { setBack(prev) }
+  }
   const stepMl = (d) => setMl(v => Math.max(0, Math.min(400, (Number(v) || 0) + d)))
   const v = ml === '' ? null : Number(ml)
   const ok = v !== null && Number.isInteger(v) && v > 0 && v <= 400
   async function pick(x) {
     setBusy(true)
-    try { await api(`/events/${feed.id}`, { method: 'PATCH', body: { ml: x } }); onDone(`Biberon de ${feed.time} : ${x} ml`) } catch { onClose() }
+    try { await api(`/events/${feed.id}`, { method: 'PATCH', body: { ml: x } }); onDone(`Biberon de ${time} : ${x} ml`) } catch { onClose() }
   }
   return (
-    <Sheet title={`Biberon de ${feed.time}`} onClose={onClose}>
+    <Sheet title={`Biberon de ${time}`} onClose={onClose}>
+      {feed.at && <>
+        <p className="sub2" style={{ margin: 0 }}>Commencé</p>
+        <div className="quick fit">
+          {BACK.map(n => <button key={n} type="button" aria-pressed={back === n} onClick={() => moveBack(n)}>{n ? `il y a ${n} min` : "à l'instant"}</button>)}
+        </div>
+      </>}
       <p className="sub2" style={{ margin: 0 }}>Quelle quantité ? Vous pourrez aussi la noter plus tard.</p>
       <div className="quick" style={{ gap: 10 }}>
         {ML.map(x => <button key={x} type="button" disabled={busy} style={{ fontSize: 17, padding: '12px 18px' }} onClick={() => pick(x)}>{x} ml</button>)}
@@ -127,7 +210,7 @@ export function FeedAmountSheet({ feed, onClose, onDone }) {
         </div>
       </div>
       {ok && <button type="button" className="primary" disabled={busy} onClick={() => pick(v)}>Enregistrer {v} ml</button>}
-      <button type="button" className="secondary blue" onClick={onClose}>Plus tard</button>
+      <button type="button" className="secondary blue" onClick={() => back ? onDone(`Biberon de ${time}`) : onClose()}>Plus tard</button>
     </Sheet>
   )
 }

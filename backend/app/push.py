@@ -78,8 +78,8 @@ def due(view: dict, lead: int, now: datetime) -> list[dict]:
         return []
     dial, d = view["dial"], datetime.strptime(view["date"], "%Y-%m-%d").date()
     nm = dial["now"]
-    if any(n["start_real"] and not n["end_real"] for n in dial["naps"]):
-        return []      # elle dort : on la laisse dormir
+    if view.get("settling") or any(n["start_real"] and not n["end_real"] for n in dial["naps"]):
+        return []      # elle dort, ou elle est au lit : on la laisse s'endormir
     name = view["child"]["name"]
     soon = lambda m: m - lead <= nm < m + LATE
     out = []

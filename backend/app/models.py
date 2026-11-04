@@ -38,6 +38,10 @@ class Event(Base):
     # l'écart entre prévision et réalité. Jamais affiché ni modifié ensuite.
     planned_start = Column(String, nullable=True)
     planned_end = Column(String, nullable=True)
+    # Mise au lit (siestes et coucher), quand elle est notée : start est alors l'endormissement.
+    # settling vaut 1 entre « Au lit » et « Endormie » ; au lit et endormie à la même heure tant qu'il dure.
+    laid = Column(String, nullable=True)
+    settling = Column(Integer, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

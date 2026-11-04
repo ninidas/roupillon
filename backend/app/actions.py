@@ -13,7 +13,7 @@ class ActionError(Exception):
         self.status, self.message = status, message
 
 
-ACTS = ("wake", "nap_start", "nap_end", "bed", "night_start", "night_end", "feed")
+ACTS = ("wake", "nap_start", "nap_lay", "asleep", "nap_end", "bed", "night_start", "night_end", "feed")
 
 
 def _open(db: Session, kind: str, t: datetime, hours: int = 14):
@@ -50,6 +50,22 @@ def _planned(db: Session, t: datetime, kind: str):
     return (S.stamp(S.at(d, x["start"])) if x else None), d
 
 
+def _nap_end_plan(db: Session, ev: models.Event, d, t: datetime) -> None:
+    """Fin estimée maintenant que l'heure réelle d'endormissement est connue."""
+    _, _, items = S.forecast(db, d, t.date())
+    x = next((i for i in items if i["type"] == "nap" and i["id"] == ev.id), None)
+    if x:
+        ev.planned_end = S.stamp(S.at(d, x["end"]))
+
+
+def _drop_settling_nap(db: Session, t: datetime) -> None:
+    """Mise au lit pour une sieste jamais suivie de « Endormie » : la journée a continué sans elle."""
+    st = S.settling(db, t)
+    if st is not None and st.kind == "nap":
+        db.delete(st)
+        db.flush()
+
+
 def check_time(t: datetime, now: datetime) -> None:
     if t > now + timedelta(minutes=5) or t < now - timedelta(hours=24):
         raise ActionError(422, "Heure hors de la journée en cours")
@@ -59,6 +75,7 @@ def do(db: Session, user, act: str, t: datetime, ml: int | None = None) -> dict:
     """Applique le geste à l'heure t. Renvoie le message à afficher et de quoi l'annuler."""
     hm = t.strftime("%H:%M")
     if act == "wake":
+        _drop_settling_nap(db, t)
         ev = next((e for e in S.events_between(db, S.midnight(t.date()), S.midnight(t.date()) + timedelta(days=1), ("wake",))), None)
         # Levée pendant un réveil nocturne : le réveil s'arrête là
         nw = _open(db, "night", t)
@@ -73,17 +90,36 @@ def do(db: Session, user, act: str, t: datetime, ml: int | None = None) -> dict:
         db.commit()
         return {"event_id": ev.id, "field": "start", "at": S.iso(t), "undo": undo, "message": f"Levée à {hm}"}
 
-    if act == "nap_start":
+    st = S.settling(db, t)
+    # « Elle dort » alors qu'elle était au lit : c'est l'endormissement
+    if act == "asleep" or (act == "nap_start" and st is not None and st.kind == "nap"):
+        if st is None:
+            raise ActionError(409, "Elle n'est pas notée au lit")
+        laid = S.parse(st.laid)
+        start = max(t, laid)
+        undo = {"op": "patch", "id": st.id, "body": {"start": st.laid.replace(" ", "T"), "settling": True}}
+        st.start, st.settling, st.updated_by = S.stamp(start), None, user.id
+        if st.kind == "nap":
+            db.flush()
+            _nap_end_plan(db, st, S.current(db, t)[1], t)
+        db.commit()
+        n = (start - laid).total_seconds() / 60
+        return {"event_id": st.id, "field": "start", "at": S.iso(start), "undo": undo,
+                "message": f"Endormie à {start.strftime('%H:%M')}" + (f", en {E.dur(n)}" if n >= 1 else ", tout de suite")}
+
+    if act in ("nap_start", "nap_lay"):
         cur = _open(db, "nap", t)
         if cur:
-            raise ActionError(409, f"Une sieste est déjà en cours depuis {cur.start[-5:]}")
+            raise ActionError(409, f"Elle est déjà au lit depuis {(cur.laid or cur.start)[-5:]}" if cur.settling
+                              else f"Une sieste est déjà en cours depuis {cur.start[-5:]}")
         planned, d = _planned(db, t, "nap")
+        if act == "nap_lay":
+            ev = _add(db, user, "nap", t, planned_start=planned, laid=S.stamp(t), settling=1)
+            db.commit()
+            return {"event_id": ev.id, "field": "laid", "at": S.iso(t), "undo": {"op": "delete", "id": ev.id},
+                    "message": f"Au lit à {hm}. Touchez « Endormie » quand elle dort"}
         ev = _add(db, user, "nap", t, planned_start=planned)
-        # Fin estimée maintenant que l'heure réelle d'endormissement est connue
-        _, _, items = S.forecast(db, d, t.date())
-        x = next((i for i in items if i["type"] == "nap" and i["id"] == ev.id), None)
-        if x:
-            ev.planned_end = S.stamp(S.at(d, x["end"]))
+        _nap_end_plan(db, ev, d, t)
         db.commit()
         return {"event_id": ev.id, "field": "start", "at": S.iso(t), "undo": {"op": "delete", "id": ev.id},
                 "message": f"Sieste {_nap_number(db, ev)} commencée à {hm}"}
@@ -96,21 +132,30 @@ def do(db: Session, user, act: str, t: datetime, ml: int | None = None) -> dict:
         end = max(t, start + timedelta(minutes=1))
         ev.end, ev.updated_by = S.stamp(end), user.id
         db.commit()
-        return {"event_id": ev.id, "field": "end", "at": S.iso(end), "undo": {"op": "patch", "id": ev.id, "body": {"end": None}},
-                "message": f"Sieste {_nap_number(db, ev)} terminée à {end.strftime('%H:%M')} · {E.dur((end - start).total_seconds() / 60)}"}
+        out = {"event_id": ev.id, "field": "end", "at": S.iso(end), "undo": {"op": "patch", "id": ev.id, "body": {"end": None}}}
+        if ev.settling:
+            # Réveillée sans que l'endormissement ait été noté : l'app demande vers quand elle s'est endormie
+            return out | {"ask_asleep": {"id": ev.id, "laid": ev.laid[-5:], "end": end.strftime("%H:%M")},
+                          "message": f"Réveillée à {end.strftime('%H:%M')}, au lit depuis {ev.laid[-5:]}"}
+        return out | {"message": f"Sieste {_nap_number(db, ev)} terminée à {end.strftime('%H:%M')} · {E.dur((end - start).total_seconds() / 60)}"}
 
     if act == "bed":
+        # Au lit pour la nuit : la nuit commence là ; « Endormie » note ensuite l'endormissement
+        _drop_settling_nap(db, t)
         d = S.bed_day(t)
         m0 = S.midnight(d)
         ev = next(iter(S.events_between(db, m0 + timedelta(hours=12), m0 + timedelta(hours=30), ("bed",))), None)
         if ev:
-            undo = {"op": "patch", "id": ev.id, "body": {"start": ev.start.replace(" ", "T")}}
-            ev.start, ev.updated_by = S.stamp(t), user.id
+            undo = {"op": "patch", "id": ev.id, "body": {"start": ev.start.replace(" ", "T"),
+                                                         "laid": ev.laid.replace(" ", "T") if ev.laid else None,
+                                                         "settling": bool(ev.settling)}}
+            ev.start, ev.laid, ev.settling, ev.updated_by = S.stamp(t), S.stamp(t), 1, user.id
         else:
-            ev = _add(db, user, "bed", t, planned_start=_planned(db, t, "bed")[0])
+            ev = _add(db, user, "bed", t, planned_start=_planned(db, t, "bed")[0], laid=S.stamp(t), settling=1)
             undo = {"op": "delete", "id": ev.id}
         db.commit()
-        return {"event_id": ev.id, "field": "start", "at": S.iso(t), "undo": undo, "message": f"Couchée à {hm}, bonne nuit"}
+        return {"event_id": ev.id, "field": "laid", "at": S.iso(t), "undo": undo,
+                "message": f"Couchée à {hm}. Touchez « Endormie » quand elle dort"}
 
     if act in ("night_start", "night_end"):
         mode, _ = S.current(db, t)
@@ -120,6 +165,9 @@ def do(db: Session, user, act: str, t: datetime, ml: int | None = None) -> dict:
         if act == "night_start":
             if cur:
                 raise ActionError(409, f"Un réveil est déjà en cours depuis {cur.start[-5:]}")
+            if st is not None:
+                # Réveil nocturne sans endormissement noté : on ne saura pas quand elle s'est endormie
+                st.settling, st.laid = None, None
             ev = _add(db, user, "night", t)
             db.commit()
             return {"event_id": ev.id, "field": "start", "at": S.iso(t), "undo": {"op": "delete", "id": ev.id},
@@ -143,8 +191,12 @@ def do(db: Session, user, act: str, t: datetime, ml: int | None = None) -> dict:
 
 
 def toggle(db: Session, user, t: datetime) -> dict:
-    """Raccourci « dort / réveillée » : sieste le jour, réveil nocturne la nuit."""
+    """Raccourci du widget : au lit, endormie, réveillée le jour ; réveil nocturne la nuit."""
     mode, _ = S.current(db, t)
+    st = S.settling(db, t)
+    # Premier toucher : au lit ; deuxième : endormie ; troisième : réveillée
+    if st is not None and (mode == "night") == (st.kind == "bed"):
+        return do(db, user, "asleep", t)
     if mode == "night":
         return do(db, user, "night_end" if _open(db, "night", t) else "night_start", t)
-    return do(db, user, "nap_end" if _open(db, "nap", t) else "nap_start", t)
+    return do(db, user, "nap_end" if _open(db, "nap", t) else "nap_lay", t)
