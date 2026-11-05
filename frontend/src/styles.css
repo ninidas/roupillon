@@ -134,13 +134,13 @@ h1{font-family:var(--round);font-size:34px;font-weight:800;letter-spacing:-.02em
 .action.night{background:var(--bedc)}
 .action.awake{background:var(--orange);color:#2a1a05;box-shadow:none}
 :root[data-theme="bleu"] .action.awake{color:#2a1a05}
-.action.ghost{background:var(--card);color:var(--indigo);flex:0 0 auto;padding:12px 18px;box-shadow:none}
+.action.ghost{background:var(--card);color:var(--indigo);box-shadow:none}
 .action.ghost.wide{flex:1;font-size:17px;font-weight:600}
 /* Après minuit, « Levée » à côté de « Réveil nocturne » : juste sa place, pour que l'autre tienne sur une ligne */
 .action + .action.awake{flex:0 0 auto;padding:12px 18px}
 .action:active{transform:scale(.97)}
 .action svg{width:24px;height:24px;flex:none}
-.action-t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;min-width:0}
+.action-t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;min-width:0;text-align:left}
 .action small{font-family:var(--font);font-size:13px;font-weight:500;opacity:.75;font-variant-numeric:tabular-nums;margin-top:2px}
 .action[disabled]{opacity:.5}
 :root[data-theme="bleu"] .action{background:var(--card);color:var(--label);box-shadow:inset 0 0 0 1.5px var(--pill-edge),0 0 22px rgba(139,133,255,.28)}
