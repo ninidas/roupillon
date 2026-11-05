@@ -267,7 +267,7 @@ button.cell:active{background:var(--fill)}
 .theme-d{width:100%;font-size:13px;line-height:1.35;color:var(--label2)}
 
 /* Roues d'heure, dans la feuille */
-.wheel{position:relative;display:flex;justify-content:center;align-items:center;gap:4px;height:200px;background:var(--card);border-radius:20px;overflow:hidden}
+.wheel{position:relative;flex:none;display:flex;justify-content:center;align-items:center;gap:4px;height:200px;background:var(--card);border-radius:20px;overflow:hidden}
 .wheel-band{position:absolute;left:12px;right:12px;top:80px;height:40px;border-radius:12px;background:var(--fill);pointer-events:none}
 .wheel-col{position:relative;height:200px;width:84px;overflow-y:auto;scroll-snap-type:y mandatory;scrollbar-width:none;overscroll-behavior:contain;
   -webkit-mask-image:linear-gradient(transparent,#000 32%,#000 68%,transparent);mask-image:linear-gradient(transparent,#000 32%,#000 68%,transparent)}

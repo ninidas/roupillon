@@ -167,7 +167,7 @@ export function AsleepSheet({ ask, onClose, onDone }) {
   )
 }
 
-// Après « Biberon » : quand il a commencé, la quantité en un geste, ou la quantité exacte qu'elle a bue
+// Après « Biberon » : quand il a commencé et la quantité (un choix ou la quantité exacte), enregistrés d'un seul bouton
 const BACK = [0, 10, 15, 20]
 export function FeedAmountSheet({ feed, onClose, onDone }) {
   const [ml, setMl] = useState('')
@@ -208,7 +208,7 @@ export function FeedAmountSheet({ feed, onClose, onDone }) {
       </>}
       <p className="sub2" style={{ margin: 0 }}>Quelle quantité ? Vous pourrez aussi la noter plus tard.</p>
       <div className="quick" style={{ gap: 10 }}>
-        {ML.map(x => <button key={x} type="button" disabled={busy} style={{ fontSize: 17, padding: '12px 18px' }} onClick={() => pick(x)}>{x} ml</button>)}
+        {ML.map(x => <button key={x} type="button" disabled={busy} aria-pressed={v === x} style={{ fontSize: 17, padding: '12px 18px' }} onClick={() => setMl(String(x))}>{x} ml</button>)}
       </div>
       <div className="field">Quantité exacte
         <label className="ml-val">
