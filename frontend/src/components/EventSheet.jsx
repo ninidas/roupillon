@@ -188,7 +188,6 @@ export function FeedAmountSheet({ feed, onClose, onDone }) {
     const [h, m] = hm.split(':').map(Number), [bh, bm] = feed.at.slice(11, 16).split(':').map(Number)
     moveBack(((bh * 60 + bm - h * 60 - m) % 1440 + 1440) % 1440)
   }
-  const stepMl = (d) => setMl(v => Math.max(0, Math.min(400, (Number(v) || 0) + d)))
   const v = ml === '' ? null : Number(ml)
   const ok = v !== null && Number.isInteger(v) && v > 0 && v <= 400
   async function pick(x) {
@@ -212,14 +211,10 @@ export function FeedAmountSheet({ feed, onClose, onDone }) {
         {ML.map(x => <button key={x} type="button" disabled={busy} style={{ fontSize: 17, padding: '12px 18px' }} onClick={() => pick(x)}>{x} ml</button>)}
       </div>
       <div className="field">Quantité exacte
-        <div className="ml-step">
-          <button type="button" aria-label="10 ml de moins" onClick={() => stepMl(-10)}>−10</button>
-          <label className="ml-val">
-            <input type="number" id="feed-ml" inputMode="numeric" min="1" max="400" step="1" value={ml} onChange={e => setMl(e.target.value)} placeholder="ex. 170" aria-label="Quantité prise en ml" />
-            <span>ml</span>
-          </label>
-          <button type="button" aria-label="10 ml de plus" onClick={() => stepMl(10)}>+10</button>
-        </div>
+        <label className="ml-val">
+          <input type="number" id="feed-ml" inputMode="numeric" min="1" max="400" step="1" value={ml} onChange={e => setMl(e.target.value)} placeholder="ex. 170" aria-label="Quantité prise en ml" />
+          <span>ml</span>
+        </label>
       </div>
       {ok && <button type="button" className="primary" disabled={busy} onClick={() => pick(v)}>Enregistrer {v} ml</button>}
       <button type="button" className="secondary blue" onClick={() => back ? onDone(`Biberon de ${time}`) : onClose()}>Plus tard</button>
