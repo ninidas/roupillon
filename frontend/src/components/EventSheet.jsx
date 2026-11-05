@@ -173,12 +173,20 @@ export function FeedAmountSheet({ feed, onClose, onDone }) {
   const [ml, setMl] = useState('')
   const [busy, setBusy] = useState(false)
   const [back, setBack] = useState(0)
-  const time = feed.at ? shiftStamp(feed.at, back).slice(11, 16) : feed.time
+  const [custom, setCustom] = useState(false)
+  const at = feed.at ? shiftStamp(feed.at, back) : null
+  const time = at ? at.slice(11, 16) : feed.time
+  const yesterday = at && at.slice(0, 10) !== feed.at.slice(0, 10)
   // Noté à la fin du biberon : on recule son heure au début, pour que le prochain soit bien annoncé
   async function moveBack(n) {
     const prev = back
     setBack(n)
     try { await api(`/events/${feed.id}`, { method: 'PATCH', body: { start: shiftStamp(feed.at, n) } }) } catch { setBack(prev) }
+  }
+  // Heure choisie sur les roues : toujours dans le passé, donc la veille si elle dépasse l'heure de la saisie
+  function pickTime(hm) {
+    const [h, m] = hm.split(':').map(Number), [bh, bm] = feed.at.slice(11, 16).split(':').map(Number)
+    moveBack(((bh * 60 + bm - h * 60 - m) % 1440 + 1440) % 1440)
   }
   const stepMl = (d) => setMl(v => Math.max(0, Math.min(400, (Number(v) || 0) + d)))
   const v = ml === '' ? null : Number(ml)
@@ -188,12 +196,16 @@ export function FeedAmountSheet({ feed, onClose, onDone }) {
     try { await api(`/events/${feed.id}`, { method: 'PATCH', body: { ml: x } }); onDone(`Biberon de ${time} : ${x} ml`) } catch { onClose() }
   }
   return (
-    <Sheet title={`Biberon de ${time}`} onClose={onClose}>
+    <Sheet title={`Biberon de ${time}${yesterday ? ' (hier)' : ''}`} onClose={onClose}>
       {feed.at && <>
         <p className="sub2" style={{ margin: 0 }}>Commencé</p>
         <div className="quick fit">
-          {BACK.map(n => <button key={n} type="button" aria-pressed={back === n} onClick={() => moveBack(n)}>{n ? `il y a ${n} min` : "à l'instant"}</button>)}
+          {BACK.map(n => <button key={n} type="button" aria-pressed={!custom && back === n} onClick={() => { setCustom(false); moveBack(n) }}>{n ? `il y a ${n} min` : "à l'instant"}</button>)}
         </div>
+        <div className="quick fit">
+          <button type="button" aria-pressed={custom || !BACK.includes(back)} onClick={() => setCustom(c => !c)}>{custom || !BACK.includes(back) ? `Commencé à ${time}` : 'Autre heure'}</button>
+        </div>
+        {custom && <TimeWheel value={time} onChange={pickTime} />}
       </>}
       <p className="sub2" style={{ margin: 0 }}>Quelle quantité ? Vous pourrez aussi la noter plus tard.</p>
       <div className="quick" style={{ gap: 10 }}>
