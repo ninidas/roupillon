@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { act, api, ApiError, cachedToday, flushQueue, getToken, loadToday, ls, Offline, pending, setToken, setUnauthorizedHandler } from './api'
-import { AsleepSheet, FeedAmountSheet, shiftStamp } from './components/EventSheet'
+import { AsleepSheet, FeedAmountSheet, WakeTimeSheet, shiftStamp } from './components/EventSheet'
 import { TabJournal, TabSettings, TabToday } from './components/Icons'
 import Journal from './pages/Journal'
 import { Login, Setup } from './pages/Login'
@@ -107,11 +107,15 @@ export default function App() {
       if (r.offline) { setOnline(false); setQueued(pending()); notify(r.message); return }
       setToday(r.today); setOnline(true); setVersion(v => v + 1); setDoneAt(Date.now())
       const acts = [{ label: 'Annuler', cls: 'undo', run: () => undo(r.undo) }]
-      if (a !== 'feed') [5, 10, 15].forEach(n => acts.push({ label: `${n} min`, early: true, run: () => shift(r, n) }))
+      // Le biberon et le lever ont leur fiche pour l'heure ; les autres gestes, des raccourcis dans le bandeau
+      if (a !== 'feed' && a !== 'wake') [5, 10, 15].forEach(n => acts.push({ label: `${n} min`, early: true, run: () => shift(r, n) }))
       notify(r.message, acts)
       if (a === 'feed') {
         setSheet(<FeedAmountSheet feed={{ id: r.event_id, time: r.at.slice(11, 16), at: r.at }} onClose={close}
           onDone={(msg) => { close(); refresh(); notify(msg) }} />)
+      }
+      if (a === 'wake') {
+        setSheet(<WakeTimeSheet wake={{ id: r.event_id, at: r.at }} onDone={(msg) => { close(); refresh(); notify(msg) }} />)
       }
       if (r.ask_asleep) {
         setSheet(<AsleepSheet ask={r.ask_asleep} onClose={close} onDone={(msg) => { close(); refresh(); notify(msg) }} />)

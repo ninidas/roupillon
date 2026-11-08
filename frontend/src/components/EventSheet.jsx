@@ -221,3 +221,39 @@ export function FeedAmountSheet({ feed, onClose, onDone }) {
     </Sheet>
   )
 }
+
+// Après « Levée » : noté en retard, on recule l'heure du lever (raccourcis ou roues), enregistrée à chaque choix
+const WAKE_BACK = [0, 15, 30, 60]
+export function WakeTimeSheet({ wake, onClose, onDone }) {
+  const [back, setBack] = useState(0)
+  const [custom, setCustom] = useState(false)
+  const [err, setErr] = useState('')
+  const time = shiftStamp(wake.at, back).slice(11, 16)
+  const [bh, bm] = wake.at.slice(11, 16).split(':').map(Number)
+  async function moveBack(n) {
+    const prev = back
+    setBack(n); setErr('')
+    try { await api(`/events/${wake.id}`, { method: 'PATCH', body: { start: shiftStamp(wake.at, n) } }) } catch (e) { setBack(prev); setErr(e.message) }
+  }
+  // Le lever est du jour même : une heure plus tard que la saisie n'est pas encore passée
+  function pickTime(hm) {
+    const [h, m] = hm.split(':').map(Number), n = bh * 60 + bm - h * 60 - m
+    if (n < 0) { setErr(`Choisissez une heure avant ${wake.at.slice(11, 16)}`); return }
+    moveBack(n)
+  }
+  const other = custom || !WAKE_BACK.includes(back)
+  return (
+    <Sheet title={`Levée à ${time}`} onClose={() => onDone(`Levée à ${time}`)}>
+      <p className="sub2" style={{ margin: 0 }}>Notée en retard ? Indiquez quand elle s'est réveillée.</p>
+      <div className="quick fit">
+        {WAKE_BACK.map(n => <button key={n} type="button" aria-pressed={!custom && back === n} onClick={() => { setCustom(false); moveBack(n) }}>{n ? `il y a ${n < 60 ? `${n} min` : '1 h'}` : "à l'instant"}</button>)}
+      </div>
+      <div className="quick fit">
+        <button type="button" aria-pressed={other} onClick={() => setCustom(c => !c)}>{other ? `Réveillée à ${time}` : 'Autre heure'}</button>
+      </div>
+      {custom && <TimeWheel value={time} onChange={pickTime} />}
+      {err && <p className="err">{err}</p>}
+      <button type="button" className="primary" onClick={() => onDone(`Levée à ${time}`)}>C'est noté</button>
+    </Sheet>
+  )
+}

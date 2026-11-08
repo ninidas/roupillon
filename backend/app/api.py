@@ -270,6 +270,11 @@ def edit_event(event_id: int, body: EventPatch, user: models.User = Depends(curr
     check_laid(start, laid)
     if start > S.now_local() + timedelta(minutes=5):
         raise HTTPException(status_code=422, detail="Cette heure n'est pas encore passée")
+    if ev.kind == "wake" and S.stamp(start) != ev.start:
+        # Un réveil nocturne arrêté par le lever suit le lever corrigé, s'il commence avant
+        for nw in db.query(models.Event).filter(models.Event.kind == "night", models.Event.end == ev.start):
+            if S.parse(nw.start) < start:
+                nw.end, nw.updated_by = S.stamp(start), user.id
     ev.start, ev.end = S.stamp(start), S.stamp(end) if end else None
     ev.laid, ev.settling = S.stamp(laid) if laid else None, 1 if settling else None
     if "ml" in fields and ev.kind == "feed":
