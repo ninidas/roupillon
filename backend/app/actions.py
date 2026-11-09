@@ -91,6 +91,15 @@ def do(db: Session, user, act: str, t: datetime, ml: int | None = None) -> dict:
         return {"event_id": ev.id, "field": "start", "at": S.iso(t), "undo": undo, "message": f"Levée à {hm}"}
 
     st = S.settling(db, t)
+    if act == "unlay":
+        # « Au lit » touché par erreur : la mise au lit en attente disparaît, la journée reprend sans elle
+        if st is None:
+            raise ActionError(409, "Elle n'est pas notée au lit")
+        laid = st.laid[-5:]
+        db.delete(st)
+        db.commit()
+        return {"event_id": None, "message": f"Mise au lit de {laid} annulée"}
+
     # « Elle dort » alors qu'elle était au lit : c'est l'endormissement
     if act == "asleep" or (act == "nap_start" and st is not None and st.kind == "nap"):
         if st is None:

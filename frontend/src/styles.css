@@ -195,6 +195,7 @@ button.cell:active{background:var(--fill)}
 .tl-note{display:block;font-size:13px;color:var(--label2);margin-top:1px}
 .empty{padding:16px;color:var(--label2);font-size:15px}
 .link{color:var(--indigo);background:none;border:0;padding:0;cursor:pointer;font-size:inherit}
+.unlay{display:block;margin:-4px auto 0;padding:6px 8px;font-size:14px;opacity:.85}
 .danger{color:var(--red)}
 
 /* Frise du jour : une ligne par fait */

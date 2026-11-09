@@ -140,7 +140,7 @@ def today(user: models.User = Depends(current_user), db: Session = Depends(get_d
 
 
 class ActionBody(BaseModel):
-    act: Literal["wake", "nap_start", "nap_lay", "asleep", "nap_end", "bed", "night_start", "night_end", "feed"]
+    act: Literal["wake", "nap_start", "nap_lay", "asleep", "unlay", "nap_end", "bed", "night_start", "night_end", "feed"]
     at: Stamp | None = None     # heure du geste sur le téléphone (envoi différé hors connexion)
     ml: Ml | None = None
 
@@ -232,6 +232,9 @@ def add_event(body: EventNew, user: models.User = Depends(current_user), db: Ses
     check_laid(start, laid)
     if start > S.now_local() + timedelta(minutes=5):
         raise HTTPException(status_code=422, detail="Cette heure n'est pas encore passée")
+    if body.kind == "nap":
+        # Une sieste notée après coup remplace une mise au lit restée en attente de « Endormie »
+        A._drop_settling_nap(db, S.now_local())
     ev = single_per_day(db, body.kind, body.day)
     if ev:
         ev.start, ev.laid, ev.settling, ev.updated_by = S.stamp(start), S.stamp(laid) if laid else None, None, user.id

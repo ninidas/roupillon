@@ -106,9 +106,9 @@ export default function App() {
       const r = await act(a)
       if (r.offline) { setOnline(false); setQueued(pending()); notify(r.message); return }
       setToday(r.today); setOnline(true); setVersion(v => v + 1); setDoneAt(Date.now())
-      const acts = [{ label: 'Annuler', cls: 'undo', run: () => undo(r.undo) }]
+      const acts = r.undo ? [{ label: 'Annuler', cls: 'undo', run: () => undo(r.undo) }] : []
       // Le biberon et le lever ont leur fiche pour l'heure ; les autres gestes, des raccourcis dans le bandeau
-      if (a !== 'feed' && a !== 'wake') [5, 10, 15].forEach(n => acts.push({ label: `${n} min`, early: true, run: () => shift(r, n) }))
+      if (r.at && a !== 'feed' && a !== 'wake') [5, 10, 15].forEach(n => acts.push({ label: `${n} min`, early: true, run: () => shift(r, n) }))
       notify(r.message, acts)
       if (a === 'feed') {
         setSheet(<FeedAmountSheet feed={{ id: r.event_id, time: r.at.slice(11, 16), at: r.at }} onClose={close}

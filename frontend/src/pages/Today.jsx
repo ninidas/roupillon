@@ -146,6 +146,10 @@ function CurrentDay({ t, night, onAct, busy, doneAt, edit, editOn, showDay, setS
           )
         })}
       </div>
+      {t.settling && (
+        // « Au lit » touché par erreur : on l'enlève sans passer par le journal
+        <button type="button" className="link unlay" disabled={busy} onClick={() => onAct('unlay')}>Pas au lit finalement ? Annuler la mise au lit</button>
+      )}
 
       <div className="feedline">
         <span className="feedline-i"><Bottle /></span>
