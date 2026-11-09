@@ -462,8 +462,9 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
     st = settling(db, now)
     if st:
         laid = E.minutes(parse(st.laid), d)
-        nxt = next((x for x in items if x["type"] == "nap" and not x["start_real"]), None)
-        label = "Nuit" if st.kind == "bed" else f"Sieste {nxt['idx'] + 1}" if nxt else "Sieste"
+        # La sieste prévue la plus proche de la mise au lit (une sieste sautée plus tôt reste derrière)
+        lay_nap = min((x for x in items if x["type"] == "nap" and not x["start_real"]), key=lambda x: abs(x["start"] - laid), default=None)
+        label = "Nuit" if st.kind == "bed" else f"Sieste {lay_nap['idx'] + 1}" if lay_nap else "Sieste"
         ends = [n.end for n in day.naps if n.end is not None]
         awake_from = ends[-1] if ends else day.wake
         headline = {"cap": "S'endort depuis", "big": E.dur(max(0, nm - laid)), "icon": "moon",
@@ -507,6 +508,12 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
             feed["ask_id"] = lf.id
 
     dl = dial(items, day, feeds, nm, mode)
+    tl = timeline(items, day, hi, nm)
+    if st and st.kind == "nap":
+        # La sieste prévue de la mise au lit en attente : la toucher ouvre cette mise au lit
+        x = next((i for i in tl if i["type"] == "nap" and lay_nap and i["idx"] == lay_nap["idx"]), None)
+        if x:
+            x["settling_id"], x["laid"] = st.id, E.fmt(E.minutes(parse(st.laid), d))
     first = E.minutes(nxt, d) if mode == "day" and feed["last"] and feed["last"]["next"] else None
     dl["feeds_plan"] = planned_feeds(items, first, cfg["feed_interval"])
 
@@ -515,7 +522,7 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
         "child": child_info(cfg, age_id, now.date()),
         "headline": headline, "actions": actions, "widget": widget, "settling": bool(st),
         "dial": dl,
-        "timeline": timeline(items, day, hi, nm),
+        "timeline": tl,
         "totals": totals, "feed": feed,
         "feeds": [{"id": f["id"], "time": E.fmt(f["t"]), "ml": f["ml"]} for f in feeds],
         # Deux cadrans : la nuit, celui de la nuit en cours (et la journée finie en second) ;

@@ -241,6 +241,8 @@ function editItem(edit, x) {
   if (x.type === 'wake') return edit({ kind: 'wake', event: x.real ? { id: x.id, start: x.time } : null, defaults: { start: x.time } })
   if (x.type === 'bed') return edit({ kind: 'bed', event: x.real ? { id: x.id, start: x.time, asleep: x.asleep } : null, defaults: { start: x.time } })
   const real = x.start_real
+  // Au lit, pas encore endormie : la fiche reprend cette mise au lit (heure d'endormissement à choisir, ou Supprimer)
+  if (x.settling_id) return edit({ kind: 'nap', title: `${x.label} · au lit`, event: { id: x.settling_id, start: x.laid, end: '', laid: x.laid } })
   return edit({ kind: 'nap', title: real ? x.label : `Noter la ${x.label.toLowerCase()}`, event: real ? { id: x.id, start: x.start, end: x.end_real ? x.end : '', laid: x.laid } : null, defaults: { start: x.start } })
 }
 // Toucher le cadran : la sieste, le soleil ou la lune ouvrent la même correction que leur ligne dans la frise
