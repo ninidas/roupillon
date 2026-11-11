@@ -615,6 +615,8 @@ def day_summary(db: Session, d: date, today: date, now_min: int | None = None) -
         "mean_window": E.dur(sum(wins) / len(wins)) if wins else None,
         "bed": E.fmt(day.bed) if day.bed is not None else None, "night": night,
         "feeds": len(feeds), "ml": ml,
+        # Quantité de chaque biberon, dans l'ordre de la journée (graphe des biberons)
+        "feed_ml": [f["ml"] or 0 for f in sorted(feeds, key=lambda f: f["t"] if f["t"] is not None else 0)],
         # Frise de la journée, en minutes depuis minuit
         "strip": {"wake": day.wake if day.wake_real else None, "bed": day.bed, "now": now_min,
                   "naps": [[n.start, n.end if n.end is not None else now_min] for n in day.naps

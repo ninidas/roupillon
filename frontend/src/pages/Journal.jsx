@@ -32,6 +32,8 @@ export default function Journal({ open, close, notify, status, version }) {
           </section>
         )}
 
+        {h.days.some(d => d.ml > 0) && <FeedChart days={h.days} />}
+
         <Growth open={open} close={close} notify={notify} version={version} />
 
         <section>
@@ -156,6 +158,59 @@ function Chart({ days, refRange }) {
         )
       })}
     </svg>
+  )
+}
+
+// Biberons sur 14 jours : un bloc par biberon, empilés dans l'ordre de la journée, et sa moyenne sur 7 jours.
+// Pas de bande de repère ici : le lait reste un ordre de grandeur (voir Croissance), pas un objectif du jour.
+const MX0 = 30
+function FeedChart({ days }) {
+  const byDate = Object.fromEntries(days.map(d => [d.date, d]))
+  const last = days[0].date
+  const slots = Array.from({ length: 14 }, (_, k) => isoMinus(last, 13 - k))
+  const today = byDate[last], todayDone = !!today?.bed
+  // Moyenne des 7 dernières journées complètes avec des quantités notées (la journée en cours compte une fois couchée)
+  const full = days.filter(d => d.ml > 0 && (d.date !== last || todayDone)).slice(0, 7)
+  const avg = full.length >= 3 ? Math.round(full.reduce((a, d) => a + d.ml, 0) / full.length / 10) * 10 : null
+  const top = Math.max(1000, Math.ceil(Math.max(...days.map(d => d.ml || 0)) / 200) * 200)
+  const my = (ml) => Y1 - (ml / top) * (Y1 - Y0)
+  const ticks = [400, 800, 1200, 1600].filter(v => v <= top)
+  const step = (CW - MX0 - 4) / 14, bw = step * 0.62, gap = 1.5
+  return (
+    <section>
+      <h2 className="section-h">Biberons sur 14 jours</h2>
+      <div className="group chart-card">
+        <svg className="chart" viewBox={`0 0 ${CW} ${CH}`} role="img" aria-label={`Lait bu chaque jour sur 14 jours${avg ? `, ${avg} ml par jour en moyenne sur les derniers jours` : ''}`}>
+          {ticks.map(v => (
+            <g key={v}>
+              <line x1={MX0} x2={CW - 4} y1={my(v)} y2={my(v)} stroke="var(--sep)" strokeDasharray="2 3" />
+              <text x={MX0 - 6} y={my(v) + 4} textAnchor="end" className="chart-t">{v}</text>
+            </g>
+          ))}
+          <line x1={MX0} x2={CW - 4} y1={Y1} y2={Y1} stroke="var(--sep)" />
+          {slots.map((iso, k) => {
+            const d = byDate[iso], x = MX0 + k * step + (step - bw) / 2
+            const partial = k === 13 && !todayDone
+            let acc = 0
+            return (
+              <g key={iso} opacity={partial ? 0.55 : 1} className="bar-g" style={{ animationDelay: `${k * 35}ms` }}>
+                {(d?.feed_ml || []).filter(ml => ml > 0).map((ml, j) => {
+                  const y0 = my(acc), y1 = my(acc + ml); acc += ml
+                  return <rect key={j} x={x} width={bw} y={y1} height={Math.max(1, y0 - y1 - (j ? gap : 0))} rx="2" fill="var(--feed)" />
+                })}
+                <text x={x + bw / 2} y={CH - 12} textAnchor="middle" className={`chart-t${k === 13 ? ' strong' : ''}`}>{Number(iso.slice(8))}</text>
+              </g>
+            )
+          })}
+          {avg && <line x1={MX0} x2={CW - 4} y1={my(avg)} y2={my(avg)} stroke="var(--label)" strokeOpacity=".55" strokeDasharray="5 4" />}
+        </svg>
+        <div className="legend">
+          <span><i className="lg-feed" />Un bloc par biberon, en ml</span>
+          {avg && <span><i className="lg-avg" />Sa moyenne : {avg} ml par jour</span>}
+        </div>
+      </div>
+      {avg && <p className="foot">Moyenne de ses {full.length} dernières journées complètes, la journée en cours compte une fois qu'elle est couchée.</p>}
+    </section>
   )
 }
 

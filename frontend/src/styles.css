@@ -378,6 +378,7 @@ button.cell:active{background:var(--fill)}
 .age-mark{fill:var(--label2)}
 .lg-band{background:var(--growth);opacity:.35} .lg-mid{height:2px!important;background:var(--growth)} .lg-dot{background:var(--sun);border-radius:5px!important}
 .lg-day{background:var(--action)} .lg-night{background:var(--bedc)} .lg-ref{background:var(--green);opacity:.35}
+.lg-feed{background:var(--feed)} .legend i.lg-avg{width:14px;height:0;border-radius:0;border-top:2px dashed var(--label);opacity:.55}
 
 /* Connexion */
 .login{max-width:420px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 56px) 20px 40px;display:flex;flex-direction:column;gap:16px}
