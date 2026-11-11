@@ -30,6 +30,8 @@ export default function App() {
 
   const setMe = (u) => { setMeState(u); ls.set('rp_me', u) }
   const setTheme = (v) => { setThemeState(v); ls.set('rp_theme', v) }
+  // La nuit, basculer le cadran sur le soleil rend aussi le thème de jour (le mode tamisé ne sert qu'au cadran de nuit)
+  const [dayFace, setDayFace] = useState(false)
   const setTab = (t) => { setTabState(t); ls.set('rp_tab', t); window.scrollTo(0, 0) }
   const close = useCallback(() => setSheet(null), [])
   const notify = useCallback((msg, actions = []) => {
@@ -76,11 +78,11 @@ export default function App() {
     const root = document.documentElement
     if (theme === 'bleu') root.dataset.theme = 'bleu'
     else delete root.dataset.theme
-    if (today?.mode === 'night') root.dataset.night = '1'
+    if (today?.mode === 'night' && !dayFace) root.dataset.night = '1'
     else delete root.dataset.night
     const bg = getComputedStyle(root).getPropertyValue('--bg').trim()
     document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', bg))
-  }, [today?.mode, theme])
+  }, [today?.mode, theme, dayFace])
 
   async function undo(u) {
     setToast(null)
@@ -145,7 +147,7 @@ export default function App() {
   return (
     <>
       {tab === 'today' && (today
-        ? <Today today={today} onAct={onAct} busy={busy} doneAt={doneAt} version={version} {...common} />
+        ? <Today today={today} onAct={onAct} busy={busy} doneAt={doneAt} version={version} onDayFace={setDayFace} {...common} />
         : <div className="wrap"><div className="empty">Chargement...</div></div>)}
       {tab === 'journal' && <Journal version={version} {...common} />}
       {tab === 'settings' && me && <Settings me={me} setMe={setMe} onLogout={logout} theme={theme} setTheme={setTheme} {...common} />}

@@ -19,7 +19,7 @@ function weekOf(iso, n) {
   return Array.from({ length: 7 }, (_, i) => toIso(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i)))
 }
 
-export default function Today({ today, onAct, open, close, refresh, notify, busy, status, doneAt, version }) {
+export default function Today({ today, onAct, open, close, refresh, notify, busy, status, doneAt, version, onDayFace }) {
   const t = today
   const [sel, setSel] = useState(null)        // jour passé affiché, null = la journée en cours
   const [past, setPast] = useState(null)
@@ -46,7 +46,7 @@ export default function Today({ today, onAct, open, close, refresh, notify, busy
 
       {viewing
         ? <PastDay key={sel} past={past} edit={edit(sel)} editOn={edit} openDay={() => open(<DaySheet date={sel} title={past?.label || ''} onClose={() => { close(); loadPast(); refresh() }} open={open} notify={notify} />)} />
-        : <CurrentDay t={t} night={night} onAct={onAct} busy={busy} doneAt={doneAt} edit={edit(t.date)} editOn={edit}
+        : <CurrentDay t={t} night={night} onDayFace={onDayFace} onAct={onAct} busy={busy} doneAt={doneAt} edit={edit(t.date)} editOn={edit}
             showDay={showDay} setShowDay={setShowDay} refresh={refresh} notify={notify} />}
     </div>
   )
@@ -92,10 +92,12 @@ function WeekStrip({ current, sel, pick }) {
   )
 }
 
-function CurrentDay({ t, night, onAct, busy, doneAt, edit, editOn, showDay, setShowDay, refresh, notify }) {
+function CurrentDay({ t, night, onAct, busy, doneAt, edit, editOn, showDay, setShowDay, refresh, notify, onDayFace }) {
   // Cadran affiché : celui de la nuit la nuit, celui de la journée le jour ; la bascule montre l'autre
   const [face, setFace] = useState(night ? 'night' : 'day')
   useEffect(() => { setFace(night ? 'night' : 'day') }, [night])
+  // Cadran de jour affiché en pleine nuit : thème normal ; on retrouve le mode tamisé en revenant à la lune ou en quittant l'écran
+  useEffect(() => { onDayFace?.(night && face === 'day'); return () => onDayFace?.(false) }, [night, face])
   const nightFace = face === 'night' && !!t.night_dial
   const H = nightFace ? t.night_dial.head : night ? t.day_head : t.headline
   const HeadIcon = HEAD_ICON[H.icon]
