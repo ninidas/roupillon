@@ -4,8 +4,8 @@
   <img src="docs/logo.png" alt="Roupillon" width="120" />
 </p>
 
-**Self-hosted baby nap tracker that predicts the next nap.**
-*Suivi et prévision des siestes de bébé, à héberger soi-même.*
+**Self-hosted baby tracker: naps, night sleep, bottles and growth. Predicts the next nap.**
+*Suivi de bébé à héberger soi-même : siestes, nuits, biberons et croissance. Prévoit la prochaine sieste.*
 
 <p align="center">
   <img src="docs/roupillon-today.png" alt="Aujourd'hui / Today" width="24%" />
@@ -38,7 +38,7 @@ Roupillon is a small mobile web app for two parents. One tap logs when the baby 
 
 #### Tracking
 - **A journal** - the last 30 days, with 14 days of sleep against the guide for the baby's age
-- **Growth** - weigh-ins plotted on the WHO growth charts (0 to 2 years, girls or boys)
+- **Growth** - weight and height plotted on the WHO growth charts (0 to 2 years, girls or boys)
 - **A milk guide** based on weight up to 6 months, as a rough guide only
 
 #### Built for two
@@ -145,7 +145,7 @@ Roupillon est une petite appli web pour téléphone, pensée pour deux parents. 
 
 #### Le suivi
 - **Un journal** : les 30 derniers jours, le sommeil sur 14 jours face au repère de son âge
-- **La croissance** : pesées placées sur les courbes de l'OMS (0 à 2 ans, fille ou garçon)
+- **La croissance** : poids et taille placés sur les courbes de l'OMS (0 à 2 ans, fille ou garçon)
 - **Un repère de lait** selon le poids jusqu'à 6 mois, donné comme un simple ordre de grandeur
 
 #### À deux
