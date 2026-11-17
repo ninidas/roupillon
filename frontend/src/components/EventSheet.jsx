@@ -222,6 +222,25 @@ export function FeedAmountSheet({ feed, onClose, onDone }) {
   )
 }
 
+// Biberon noté alors qu'une sieste est encore en cours : son réveil a sans doute été oublié
+export function NapOverSheet({ nap, feed, onClose, onDone }) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  async function end() {
+    setBusy(true); setErr('')
+    try { await api(`/events/${nap.id}`, { method: 'PATCH', body: { end: feed.time } }); onDone(`${nap.label} terminée à ${feed.time}`) }
+    catch (e) { setBusy(false); setErr(e.message) }
+  }
+  return (
+    <Sheet title={`${nap.label} toujours en cours`} onClose={onClose}>
+      <p className="sub2" style={{ margin: 0 }}>Le biberon de {feed.time} tombe pendant la sieste, endormie à {nap.start}. Elle s'était réveillée ? L'heure du réveil se corrige ensuite en touchant la sieste.</p>
+      {err && <p className="err">{err}</p>}
+      <button type="button" className="primary" disabled={busy} onClick={end}>Oui, réveillée vers {feed.time}</button>
+      <button type="button" className="secondary blue" onClick={onClose}>Non, elle dort encore</button>
+    </Sheet>
+  )
+}
+
 // Après « Levée » : noté en retard, on recule l'heure du lever (raccourcis ou roues), enregistrée à chaque choix
 const WAKE_BACK = [0, 15, 30, 60]
 export function WakeTimeSheet({ wake, onClose, onDone }) {

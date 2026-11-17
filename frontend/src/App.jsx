@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { act, api, ApiError, cachedToday, flushQueue, getToken, loadToday, ls, Offline, pending, setToken, setUnauthorizedHandler } from './api'
-import { AsleepSheet, FeedAmountSheet, WakeTimeSheet, shiftStamp } from './components/EventSheet'
+import { AsleepSheet, FeedAmountSheet, NapOverSheet, WakeTimeSheet, shiftStamp } from './components/EventSheet'
 import { TabJournal, TabSettings, TabToday } from './components/Icons'
 import Journal from './pages/Journal'
 import { Login, Setup } from './pages/Login'
@@ -102,6 +102,16 @@ export default function App() {
     } catch (e) { notify(e.message) }
   }
 
+  // Biberon noté pendant une sieste restée ouverte : on demande si elle était réveillée
+  async function askNapOver(feedId) {
+    let t
+    try { t = await loadToday(); setToday(t) } catch { return refresh() }
+    const f = t.feeds?.find(x => x.id === feedId)
+    const nap = t.mode !== 'night' && t.timeline?.find(x => x.type === 'nap' && x.start_real && !x.end_real)
+    if (!f || !nap || nap.start >= f.time) return
+    setSheet(<NapOverSheet nap={nap} feed={f} onClose={close} onDone={(msg) => { close(); refresh(); setVersion(v => v + 1); notify(msg) }} />)
+  }
+
   async function onAct(a) {
     setBusy(true)
     try {
@@ -113,8 +123,8 @@ export default function App() {
       if (r.at && a !== 'feed' && a !== 'wake') [5, 10, 15].forEach(n => acts.push({ label: `${n} min`, early: true, run: () => shift(r, n) }))
       notify(r.message, acts)
       if (a === 'feed') {
-        setSheet(<FeedAmountSheet feed={{ id: r.event_id, time: r.at.slice(11, 16), at: r.at }} onClose={close}
-          onDone={(msg) => { close(); refresh(); notify(msg) }} />)
+        const after = (msg) => { close(); if (msg) notify(msg); askNapOver(r.event_id) }
+        setSheet(<FeedAmountSheet feed={{ id: r.event_id, time: r.at.slice(11, 16), at: r.at }} onClose={() => after()} onDone={after} />)
       }
       if (a === 'wake') {
         setSheet(<WakeTimeSheet wake={{ id: r.event_id, at: r.at }} onDone={(msg) => { close(); refresh(); notify(msg) }} />)

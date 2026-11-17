@@ -144,10 +144,11 @@ export default function Dial({ dial, onPick }) {
       {!night && <PlannedFeeds feeds={dial.feeds_plan} from={wake} to={bed} A={A} tap={tap} onPick={onPick} />}
 
       {dial.naps.map((x, i) => {
-        const a0 = A(x.start), full = A(x.end)
         const real = x.start_real
         const running = real && !x.end_real
-        const a1 = running ? Math.max(a0, A(Math.min(Math.max(now, x.start), x.end))) : full
+        // Sieste en cours qui dépasse son réveil estimé : la gélule s'allonge jusqu'à maintenant
+        const a0 = A(x.start), full = A(running ? Math.max(x.end, now) : x.end)
+        const a1 = running ? Math.max(a0, A(Math.max(now, x.start))) : full
         // Sieste en cours : la partie dormie se remplit jusqu'à maintenant, la suite reste en pointillés
         // jusqu'au réveil estimé. L'icône se pose dans la partie la plus longue, pour ne pas croiser la tête.
         const ia = !running ? (a0 + a1) / 2 : a1 - a0 >= full - a1 ? (a0 + a1) / 2 : (a1 + full) / 2
