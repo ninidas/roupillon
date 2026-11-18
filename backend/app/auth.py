@@ -93,6 +93,8 @@ def new_widget_key() -> str:
 
 # Ancien nom d'en-tête encore accepté (widgets et Raccourcis déjà installés), réglé par variable d'environnement
 EXTRA_KEY_HEADER = os.environ.get("EXTRA_KEY_HEADER", "")
+# Clé d'un capteur de la maison (Home Assistant...) qui note les passages de nuit ; vide = désactivé
+SENSOR_KEY = os.environ.get("SENSOR_KEY", "")
 
 
 def widget_user(request: Request, x_roupillon_key: str | None = Header(default=None),
@@ -104,3 +106,14 @@ def widget_user(request: Request, x_roupillon_key: str | None = Header(default=N
         if user:
             return user
     raise HTTPException(status_code=401, detail="Clé du widget inconnue")
+
+
+def sensor_user(request: Request, x_roupillon_key: str | None = Header(default=None),
+                db: Session = Depends(get_db)) -> models.User:
+    """Passages de nuit : la clé du capteur (SENSOR_KEY), notés au nom du premier compte ; ou une clé de widget."""
+    key = x_roupillon_key or (request.headers.get(EXTRA_KEY_HEADER) if EXTRA_KEY_HEADER else None)
+    if key and SENSOR_KEY and hmac.compare_digest(key, SENSOR_KEY):
+        user = db.query(models.User).order_by(models.User.id).first()
+        if user:
+            return user
+    return widget_user(request, x_roupillon_key, db)

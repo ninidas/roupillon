@@ -406,3 +406,5 @@ button.cell:active{background:var(--fill)}
 
 button:focus-visible,input:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.visit-mk{fill:var(--label);opacity:.6}

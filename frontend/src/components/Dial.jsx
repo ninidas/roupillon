@@ -202,6 +202,11 @@ export function NightDial({ dial, onPick }) {
       <path d={arc(R, -135, 135)} className="ring" strokeWidth={W} />
       {upto > bed && <path d={arc(R, -135, A(upto))} className="night-slept" strokeWidth={W - 6} />}
       <Feeds feeds={dial.feeds} from={bed} to={wake} A={A} tap={tap} onPick={onPick} />
+      {/* Passages (tétine...) : un petit point au bord intérieur de l'anneau, rien de retiré au sommeil */}
+      {(dial.visits || []).map((v, i) => {
+        const [vx, vy] = pol(R - W / 2 - 7, A(v.t))
+        return <circle key={`v${i}`} cx={vx.toFixed(2)} cy={vy.toFixed(2)} r="3" className="visit-mk" />
+      })}
 
       {dial.wakes.map((w, i) => {
         const a0 = A(w.start), a1 = A(w.end ?? (live ? now : w.start))

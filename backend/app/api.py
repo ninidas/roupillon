@@ -13,7 +13,7 @@ from . import models
 from . import push as P
 from . import service as S
 from .auth import (burn_password_check, create_token, current_user, hash_password, key_hash, new_widget_key,
-                   password_problem, verify_password, widget_user)
+                   password_problem, verify_password, widget_user, sensor_user)
 from .database import get_db
 from .limiter import limiter
 
@@ -559,3 +559,26 @@ class QuickFeed(BaseModel):
 @limiter.limit("20/minute")
 def quick_feed(request: Request, body: QuickFeed | None = None, user: models.User = Depends(widget_user), db: Session = Depends(get_db)):
     return quick_reply(request, A.do(db, user, "feed", S.now_local(), body.ml if body else None)["message"])
+
+
+class QuickVisit(BaseModel):
+    at: Stamp | None = None     # heure du passage, si le capteur l'envoie en retard
+
+
+@router.post("/quick/visit")
+@limiter.limit("30/minute")
+def quick_visit(request: Request, body: QuickVisit | None = None, user: models.User = Depends(sensor_user), db: Session = Depends(get_db)):
+    """Passage de nuit (on entre lui rendre sa tétine...) : une heure, sans durée ; ne compte pas comme un réveil.
+    Envoyé par un capteur de présence ; un second envoi à 2 minutes près est ignoré."""
+    now = S.now_local()
+    t = parse_at(body.at if body else None, now)
+    try:
+        A.check_time(t, now)
+    except A.ActionError as e:
+        fail(e)
+    near = S.events_between(db, t - timedelta(minutes=2), t + timedelta(minutes=3), ("visit",))
+    if near:
+        return quick_reply(request, f"Passage de {near[0].start[-5:]} déjà noté")
+    db.add(models.Event(kind="visit", start=S.stamp(t), created_by=user.id, updated_by=user.id))
+    db.commit()
+    return quick_reply(request, f"Passage à {t:%H:%M}")

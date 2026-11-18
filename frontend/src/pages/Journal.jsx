@@ -32,6 +32,8 @@ export default function Journal({ open, close, notify, status, version }) {
           </section>
         )}
 
+        {h.days.some(d => d.night?.visits) && <VisitChart days={h.days} />}
+
         {h.days.some(d => d.ml > 0) && <FeedChart days={h.days} />}
 
         <Growth open={open} close={close} notify={notify} version={version} />
@@ -108,6 +110,9 @@ function Settle({ s }) {
   )
 }
 
+// « 14 passages · aucun réveil » : les passages (tétine...) ne sont pas des réveils
+const nightText = (n) => [n.visits ? `${n.visits} passage${n.visits > 1 ? 's' : ''}` : '', n.count ? `${n.count} réveil${n.count > 1 ? 's' : ''}` : 'aucun réveil'].filter(Boolean).join(' · ')
+
 // Nuit dernière et sommeil sur 24 h (siestes d'hier et nuit qui a suivi), comparé au repère de son âge
 function Tiles({ days, refRange }) {
   const y = days.find(d => d.label === 'Hier')
@@ -117,7 +122,7 @@ function Tiles({ days, refRange }) {
   const where = total < refRange.lo ? 'sous le repère' : total > refRange.hi ? 'au-dessus du repère' : 'dans le repère'
   return (
     <div className="tiles">
-      <div className="tile"><span>Nuit dernière</span><b>{y.night.sleep}</b><span>{y.night.count ? `${y.night.count} réveil${y.night.count > 1 ? 's' : ''}` : 'aucun réveil'}{y.bed ? ` · couchée ${y.bed}` : ''}</span></div>
+      <div className="tile"><span>Nuit dernière</span><b>{y.night.sleep}</b><span>{nightText(y.night)}{y.bed ? ` · couchée ${y.bed}` : ''}</span></div>
       <div className="tile"><span>Sur 24 h</span><b>{h(total)}</b><span className={where === 'dans le repère' ? 'ok' : ''}>{where}</span></div>
     </div>
   )
@@ -158,6 +163,44 @@ function Chart({ days, refRange }) {
         )
       })}
     </svg>
+  )
+}
+
+// Passages de nuit sur 14 jours (relevés par un capteur) : une barre par nuit, placée sous la journée qui la précède
+function VisitChart({ days }) {
+  const byDate = Object.fromEntries(days.map(d => [d.date, d]))
+  const last = days[0].date
+  const slots = Array.from({ length: 14 }, (_, k) => isoMinus(last, 13 - k))
+  const top = Math.max(10, Math.ceil(Math.max(...days.map(d => d.night?.visits || 0)) / 5) * 5)
+  const vy = (n) => Y1 - (n / top) * (Y1 - Y0)
+  const ticks = [5, 10, 15, 20, 25, 30].filter(v => v <= top)
+  const step = (CW - MX0 - 4) / 14, bw = step * 0.62
+  return (
+    <section>
+      <h2 className="section-h">Passages de nuit sur 14 jours</h2>
+      <div className="group chart-card">
+        <svg className="chart" viewBox={`0 0 ${CW} ${CH}`} role="img" aria-label="Nombre de passages dans sa chambre chaque nuit, sur 14 nuits">
+          {ticks.map(v => (
+            <g key={v}>
+              <line x1={MX0} x2={CW - 4} y1={vy(v)} y2={vy(v)} stroke="var(--sep)" strokeDasharray="2 3" />
+              <text x={MX0 - 6} y={vy(v) + 4} textAnchor="end" className="chart-t">{v}</text>
+            </g>
+          ))}
+          <line x1={MX0} x2={CW - 4} y1={Y1} y2={Y1} stroke="var(--sep)" />
+          {slots.map((iso, k) => {
+            const n = byDate[iso]?.night?.visits || 0, x = MX0 + k * step + (step - bw) / 2
+            return (
+              <g key={iso} className="bar-g" style={{ animationDelay: `${k * 35}ms` }}>
+                {n > 0 && <rect x={x} width={bw} y={vy(n)} height={Y1 - vy(n)} rx="2" fill="var(--bedc)" />}
+                {n > 0 && <text x={x + bw / 2} y={vy(n) - 4} textAnchor="middle" className="chart-t">{n}</text>}
+                <text x={x + bw / 2} y={CH - 12} textAnchor="middle" className={`chart-t${k === 13 ? ' strong' : ''}`}>{Number(iso.slice(8))}</text>
+              </g>
+            )
+          })}
+        </svg>
+      </div>
+      <p className="foot">Chaque fois qu'on entre dans sa chambre la nuit, d'après le capteur. Une nuit est placée sous le jour de son coucher. Ces passages ne retirent rien à son sommeil.</p>
+    </section>
   )
 }
 
@@ -235,7 +278,7 @@ function summary(d) {
   if (d.wake) parts.push(`Lever ${d.wake}`)
   parts.push(d.naps === 1 ? '1 sieste' : `${d.naps} siestes`)
   if (d.bed) parts.push(`couchée ${d.bed}`)
-  if (d.night) parts.push(`nuit ${d.night.sleep}${d.night.count ? `, ${d.night.count} réveil${d.night.count > 1 ? 's' : ''}` : ''}`)
+  if (d.night) parts.push(`nuit ${d.night.sleep}${d.night.visits ? `, ${d.night.visits} passage${d.night.visits > 1 ? 's' : ''}` : ''}${d.night.count ? `, ${d.night.count} réveil${d.night.count > 1 ? 's' : ''}` : ''}`)
   if (d.feeds) parts.push(`${d.feeds} biberon${d.feeds > 1 ? 's' : ''}${d.ml ? `, ${d.ml} ml` : ''}`)
   // Espaces insécables : « 1 h 35 » ne se coupe pas en fin de ligne
   return parts.join(' · ').replace(/(\d) h (\d)/g, '$1\u00a0h\u00a0$2').replace(/(\d) (h|min|ml)\b/g, '$1\u00a0$2')

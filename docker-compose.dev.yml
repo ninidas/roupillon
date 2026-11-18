@@ -13,6 +13,8 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
+      # Clé du capteur qui note les passages de nuit (Home Assistant), dans .env
+      - SENSOR_KEY=${SENSOR_KEY:-}
     volumes:
       - ./data-dev:/data
     ports:

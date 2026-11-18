@@ -120,6 +120,8 @@ class Day:
     night: list[Span] = field(default_factory=list)
     # Minutes entre la mise au lit et l'endormissement, par id de sieste ou de coucher (quand elles sont notées)
     settle: dict = field(default_factory=dict)
+    # Passages de nuit (on entre la recoucher, lui rendre sa tétine) : minutes, sans durée, ne retirent rien au sommeil
+    visits: list = field(default_factory=list)
 
 
 def evening(age: dict, hab: dict) -> dict:
@@ -295,7 +297,14 @@ def night_info(day: Day, end: int | None, dur=None) -> dict | None:
     sleep = None
     if end is not None:
         sleep = max(0, dur(day.bed, end) - awake - (dur(open_at, end) if open_at is not None else 0))
-    return {"bed": day.bed, "awake": awake, "open": open_at, "count": len(day.night), "sleep": sleep}
+    return {"bed": day.bed, "awake": awake, "open": open_at, "count": len(day.night), "sleep": sleep,
+            "visits": len(day.visits)}
+
+
+def night_text(count: int, visits: int = 0, wake_word: str = "réveil") -> str:
+    """« 14 passages · aucun réveil » : les passages d'abord, ils ne sont pas des réveils."""
+    wakes = plural(count, wake_word) if count else f"aucun {wake_word}"
+    return f"{plural(visits, 'passage')} · {wakes}" if visits else wakes
 
 
 def minutes(dt: datetime, d: date) -> int:

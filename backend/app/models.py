@@ -27,7 +27,7 @@ class AppConfig(Base):
 
 class Event(Base):
     """Un fait de la journée. kind : wake (lever), nap (sieste), bed (coucher pour la nuit),
-    night (réveil nocturne), feed (biberon). Heures locales « AAAA-MM-JJ HH:MM »."""
+    night (réveil nocturne), feed (biberon), visit (passage de nuit, sans durée). Heures locales « AAAA-MM-JJ HH:MM »."""
     __tablename__ = "events"
     id = Column(Integer, primary_key=True)
     kind = Column(String, nullable=False, index=True)

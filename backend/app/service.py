@@ -231,6 +231,7 @@ def build_day(db: Session, d: date, evs: list | None = None) -> tuple[E.Day, lis
         limit = parse(next_wake[0].start) if next_wake else bed_dt + timedelta(hours=18)
         day.night = [E.Span(mins(e.start), mins(e.end), e.id) for e in evs
                      if e.kind == "night" and bed_dt <= parse(e.start) < limit]
+        day.visits = [mins(e.start) for e in evs if e.kind == "visit" and bed_dt <= parse(e.start) < limit]
     feeds = [{"id": e.id, "t": mins(e.start), "ml": e.ml} for e in evs
              if e.kind == "feed" and parse(e.start).date() == d]
     return day, feeds
@@ -310,7 +311,7 @@ def last_night(db: Session, d: date, day: E.Day) -> dict | None:
         return None
     prev, _ = build_day(db, d - timedelta(days=1))
     info = E.night_info(prev, day.wake + 1440, lambda a, b: real_dur(prev.date, a, b))
-    return {"sleep": info["sleep"], "count": info["count"]} if info else None
+    return {"sleep": info["sleep"], "count": info["count"], "visits": info["visits"]} if info else None
 
 
 def night_view(db: Session, d: date, day: E.Day, nm: int | None = None, est: float | None = None,
@@ -336,7 +337,7 @@ def night_view(db: Session, d: date, day: E.Day, nm: int | None = None, est: flo
         info = E.night_info(day, wake, lambda a, b: real_dur(d, a, b))
         n = info["count"]
         head = {"cap": cap, "big": E.dur(info["sleep"]), "icon": "moon",
-                "sub": f"Couchée à {E.fmt(day.bed)} · levée à {E.fmt(wake)} · {E.plural(n, 'réveil') if n else 'aucun réveil'}"}
+                "sub": f"Couchée à {E.fmt(day.bed)} · levée à {E.fmt(wake)} · {E.night_text(n, info['visits'])}"}
     return {
         "bed": day.bed, "wake": end, "now": nm if nm is not None else -1, "wake_real": real,
         "bed_id": day.bed_id, "wake_id": nxt.wake_id if real else None, "wake_day": (d + timedelta(days=1)).isoformat(),
@@ -344,6 +345,7 @@ def night_view(db: Session, d: date, day: E.Day, nm: int | None = None, est: flo
         "bed_asleep": E.fmt(day.bed + day.settle[day.bed_id]) if day.bed_id in day.settle else "",
         "wakes": [{"id": w.id, "start": w.start, "end": w.end, "start_hm": E.fmt(w.start),
                    "end_hm": E.fmt(w.end) if w.end is not None else ""} for w in day.night if w.start is not None],
+        "visits": [{"t": v, "time": E.fmt(v)} for v in day.visits if v <= end],
         "feeds": feeds, "head": head,
     }
 
@@ -392,7 +394,7 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
             widget = {"state": "night_awake", "title": "Réveil nocturne", "line": f"depuis {E.fmt(open_w.start)}",
                       "since": iso(at(d, open_w.start))}
         else:
-            wakes = E.plural(info['count'], 'réveil') if info['count'] else 'aucun réveil'
+            wakes = E.night_text(info['count'], info['visits'])
             if nm < est:
                 headline = {"cap": "Réveil estimé", "big": E.fmt(est), "icon": "moon",
                             "sub": f"Nuit de {E.dur(info['sleep'])} · {wakes}"}
@@ -498,8 +500,9 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
     ln = last_night(db, d, day)
     totals = {"slept": E.dur(slept), "planned": E.dur(planned), "pct": min(1, slept / planned) if planned else 0,
               "day_ref": DAY_REF.get(age_id), "ref_24h": REF_24H.get(age_id),
-              "last_night": {"sleep": E.dur(ln["sleep"]), "count": ln["count"],
-                             "wakes": (E.plural(ln["count"], "réveil") + (" nocturnes" if ln["count"] > 1 else " nocturne")) if ln["count"] else "Aucun réveil nocturne",
+              "last_night": {"sleep": E.dur(ln["sleep"]), "count": ln["count"], "visits": ln["visits"],
+                             "wakes": ((E.plural(ln["count"], "réveil") + (" nocturnes" if ln["count"] > 1 else " nocturne")) if ln["count"] else "Aucun réveil nocturne")
+                                      if not ln["visits"] else E.night_text(ln["count"], ln["visits"]),
                              "total_24h": E.dur(ln["sleep"] + slept)} if ln and ln["sleep"] is not None else None}
 
     # Biberons
@@ -618,7 +621,7 @@ def day_summary(db: Session, d: date, today: date, now_min: int | None = None) -
     night = None
     if day.bed is not None and nxt.wake_real:
         info = E.night_info(day, nxt.wake + 1440, lambda a, b: real_dur(d, a, b))
-        night = {"sleep": E.dur(info["sleep"]), "count": info["count"], "min": info["sleep"]}
+        night = {"sleep": E.dur(info["sleep"]), "count": info["count"], "min": info["sleep"], "visits": info["visits"]}
     ml = sum(f["ml"] or 0 for f in feeds)
     return {
         "date": d.isoformat(), "label": short_label(d, today),
