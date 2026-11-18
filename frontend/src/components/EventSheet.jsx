@@ -167,6 +167,39 @@ export function AsleepSheet({ ask, onClose, onDone }) {
   )
 }
 
+// Question avant un geste (« Au lit » juste après un réveil) : rien n'est noté sans « Oui »
+export function ConfirmSheet({ title, text, yes, no, onYes, onClose }) {
+  return (
+    <Sheet title={title} onClose={onClose}>
+      <p className="sub2" style={{ margin: 0 }}>{text}</p>
+      <button type="button" className="primary" onClick={onYes}>{yes}</button>
+      <button type="button" className="secondary blue" onClick={onClose}>{no}</button>
+    </Sheet>
+  )
+}
+
+// Au lit depuis longtemps sans « Endormie » : vers quand s'est-elle endormie ? (ou mise au lit annulée)
+export function SettleAskSheet({ ask, date, now, onAct, onClose }) {
+  const [h, m] = ask.laid.split(':').map(Number), [nh, nm] = now.split(':').map(Number)
+  const max = ((nh * 60 + nm) - (h * 60 + m) + 1440) % 1440
+  const offs = [0, 5, 10, 15, 20, 30, 45].filter(n => n <= max)
+  return (
+    <Sheet title="Endormie vers quand ?" onClose={onClose}>
+      <p className="sub2" style={{ margin: 0 }}>{ask.label} : au lit à {ask.laid}, il y a {ask.since}.</p>
+      <div className="quick" style={{ gap: 10 }}>
+        {offs.map(n => (
+          <button key={n} type="button" style={{ fontSize: 17, padding: '12px 18px' }}
+            onClick={() => onAct('asleep', { at: `${date}T${addHM(ask.laid, n)}` })}>
+            {n ? `${addHM(ask.laid, n)} · ${n} min` : 'Tout de suite'}
+          </button>
+        ))}
+      </div>
+      <button type="button" className="secondary blue" onClick={() => onAct('asleep')}>À l'instant</button>
+      <button type="button" className="secondary" onClick={() => onAct('unlay')}>Pas au lit finalement</button>
+    </Sheet>
+  )
+}
+
 // Après « Biberon » : quand il a commencé et la quantité (un choix ou la quantité exacte), enregistrés d'un seul bouton
 const BACK = [0, 10, 15, 20]
 export function FeedAmountSheet({ feed, onClose, onDone }) {

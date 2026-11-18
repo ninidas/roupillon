@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Dial, { NightDial } from '../components/Dial'
-import EventSheet, { ML } from '../components/EventSheet'
+import EventSheet, { ConfirmSheet, ML, SettleAskSheet } from '../components/EventSheet'
 import { Bed, Bottle, Check, Chevron, Eye, Moon, Pencil, Plus, Sun } from '../components/Icons'
 import { DaySheet } from './Journal'
 import { api } from '../api'
@@ -46,7 +46,7 @@ export default function Today({ today, onAct, open, close, refresh, notify, busy
 
       {viewing
         ? <PastDay key={sel} past={past} edit={edit(sel)} editOn={edit} openDay={() => open(<DaySheet date={sel} title={past?.label || ''} onClose={() => { close(); loadPast(); refresh() }} open={open} notify={notify} />)} />
-        : <CurrentDay t={t} night={night} onDayFace={onDayFace} onAct={onAct} busy={busy} doneAt={doneAt} edit={edit(t.date)} editOn={edit}
+        : <CurrentDay t={t} night={night} onDayFace={onDayFace} onAct={onAct} open={open} close={close} busy={busy} doneAt={doneAt} edit={edit(t.date)} editOn={edit}
             showDay={showDay} setShowDay={setShowDay} refresh={refresh} notify={notify} />}
     </div>
   )
@@ -92,7 +92,7 @@ function WeekStrip({ current, sel, pick }) {
   )
 }
 
-function CurrentDay({ t, night, onAct, busy, doneAt, edit, editOn, showDay, setShowDay, refresh, notify, onDayFace }) {
+function CurrentDay({ t, night, onAct, open, close, busy, doneAt, edit, editOn, showDay, setShowDay, refresh, notify, onDayFace }) {
   // Cadran affiché : celui de la nuit la nuit, celui de la journée le jour ; la bascule montre l'autre
   const [face, setFace] = useState(night ? 'night' : 'day')
   useEffect(() => { setFace(night ? 'night' : 'day') }, [night])
@@ -141,14 +141,27 @@ function CurrentDay({ t, night, onAct, busy, doneAt, edit, editOn, showDay, setS
         {t.actions.map((a, i) => {
           const I = ACT_ICON[a.act]
           return (
-            <button key={a.act} type="button" className={`action ${a.style}`} disabled={busy} onClick={() => onAct(a.act)}>
+            <button key={a.act} type="button" className={`action ${a.style}`} disabled={busy}
+              onClick={() => a.confirm
+                ? open(<ConfirmSheet title={a.label} text={a.confirm} yes="Oui, au lit" no="Non, elle est réveillée" onClose={close} onYes={() => { close(); onAct(a.act) }} />)
+                : onAct(a.act)}>
               {i === 0 && fresh ? <span className="tick"><Check /></span> : I && <I />}
               <span className="action-t rd">{a.label}{a.time && <small>à {a.time}</small>}</span>
             </button>
           )
         })}
       </div>
-      {t.settling && (
+      {t.settle_ask ? (
+        // Au lit depuis longtemps sans « Endormie » : elle dort sans doute, ou la mise au lit était une erreur
+        <div className="settle-ask">
+          <p>Au lit à {t.settle_ask.laid}, il y a {t.settle_ask.since}, sans « Endormie ». Elle dort ?</p>
+          <button type="button" className="secondary blue" disabled={busy}
+            onClick={() => open(<SettleAskSheet ask={t.settle_ask} date={t.date} now={t.now} onClose={close} onAct={(a, extra) => { close(); onAct(a, extra) }} />)}>
+            Elle dort, depuis quand ?
+          </button>
+          <button type="button" className="secondary" disabled={busy} onClick={() => onAct('unlay')}>Pas au lit finalement</button>
+        </div>
+      ) : t.settling && (
         // « Au lit » touché par erreur : on l'enlève sans passer par le journal
         <button type="button" className="link unlay" disabled={busy} onClick={() => onAct('unlay')}>Pas au lit finalement ? Annuler la mise au lit</button>
       )}

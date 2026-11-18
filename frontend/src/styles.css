@@ -196,6 +196,8 @@ button.cell:active{background:var(--fill)}
 .empty{padding:16px;color:var(--label2);font-size:15px}
 .link{color:var(--indigo);background:none;border:0;padding:0;cursor:pointer;font-size:inherit}
 .unlay{display:block;margin:-4px auto 0;padding:6px 8px;font-size:14px;opacity:.85}
+.settle-ask{display:flex;flex-direction:column;gap:10px;margin:2px 0 6px}
+.settle-ask p{margin:0;text-align:center;color:var(--label2);font-size:15px}
 .danger{color:var(--red)}
 
 /* Frise du jour : une ligne par fait */

@@ -277,6 +277,8 @@ def settle_text(m: float) -> str:
 
 
 SETTLE_NIGHT = 90    # minutes : un endormissement du soir jamais noté est oublié au-delà
+SETTLE_ASK = 45      # minutes : une sieste « au lit » sans « Endormie » au-delà, l'app demande si elle dort
+JUST_WOKE = 20       # minutes : « Au lit » si peu après un réveil demande confirmation
 
 
 def settling(db: Session, now: datetime):
@@ -363,8 +365,9 @@ def last_feed(db: Session, now: datetime):
 
 # ---------- vue « Aujourd'hui » ----------
 
-def btn(act: str, label: str, style: str = "nap", time: str | None = None) -> dict:
-    return {"act": act, "label": label, "style": style, "time": time}
+def btn(act: str, label: str, style: str = "nap", time: str | None = None, confirm: str | None = None) -> dict:
+    """confirm : question posée avant d'envoyer le geste (un toucher par erreur se rattrape là)."""
+    return {"act": act, "label": label, "style": style, "time": time, "confirm": confirm}
 
 
 def today_view(db: Session, now: datetime | None = None) -> dict:
@@ -452,14 +455,19 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
             actions = [btn("nap_end", "Elle est réveillée", "awake", hm)]
         elif not day.wake_real and not day.naps and nm < 12 * 60:
             actions = [btn("wake", "Elle est levée", "awake", hm), btn("nap_start", "Elle dort", "ghost")]
-        elif nm >= bed_item["start"] - 60 or nm >= 17 * 60 + 30:
-            actions = [btn("bed", "Elle est couchée", "night", hm), btn("nap_lay", "Sieste", "ghost")]
         else:
-            # « Au lit » puis « Endormie » mesure le temps pour s'endormir ; « Elle dort » note directement l'endormissement
-            actions = [btn("nap_lay", "Au lit", "nap", hm), btn("nap_start", "Elle dort", "ghost")]
+            # Réveillée il y a moins de 20 min : « Au lit » est sans doute un toucher de trop, l'app demande avant
+            ask = (f"Elle vient de se réveiller à {E.fmt(awake_from)}. La remettre au lit ?"
+                   if done and 0 <= nm - awake_from < JUST_WOKE else None)
+            if nm >= bed_item["start"] - 60 or nm >= 17 * 60 + 30:
+                actions = [btn("bed", "Elle est couchée", "night", hm), btn("nap_lay", "Sieste", "ghost", confirm=ask)]
+            else:
+                # « Au lit » puis « Endormie » mesure le temps pour s'endormir ; « Elle dort » note directement l'endormissement
+                actions = [btn("nap_lay", "Au lit", "nap", hm, confirm=ask), btn("nap_start", "Elle dort", "ghost")]
 
     # Au lit, pas encore endormie : on attend « Endormie » (la sieste ou la nuit ne commence qu'alors)
     st = settling(db, now)
+    settle_ask = None
     if st:
         laid = E.minutes(parse(st.laid), d)
         # La sieste prévue la plus proche de la mise au lit (une sieste sautée plus tôt reste derrière)
@@ -469,6 +477,10 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
         awake_from = ends[-1] if ends else day.wake
         headline = {"cap": "S'endort depuis", "big": E.dur(max(0, nm - laid)), "icon": "moon",
                     "sub": f"{label} · au lit à {E.fmt(laid)}"}
+        if st.kind == "nap" and nm - laid >= SETTLE_ASK:
+            # Si longtemps sans « Endormie » : elle dort sans doute déjà, ou la mise au lit était une erreur
+            settle_ask = {"id": st.id, "laid": E.fmt(laid), "label": label, "since": E.dur(nm - laid)}
+            headline = {"cap": "Au lit depuis", "big": E.dur(nm - laid), "icon": "moon", "sub": f"{label} · elle dort ?"}
         actions = [btn("asleep", "Endormie", "nap", hm)]
         if st.kind == "nap":
             actions.append(btn("nap_end", "Déjà réveillée", "ghost"))
@@ -520,7 +532,7 @@ def today_view(db: Session, now: datetime | None = None) -> dict:
     return {
         "now": hm, "now_iso": iso(now), "date": d.isoformat(), "date_label": date_label(now.date()), "mode": mode,
         "child": child_info(cfg, age_id, now.date()),
-        "headline": headline, "actions": actions, "widget": widget, "settling": bool(st),
+        "headline": headline, "actions": actions, "widget": widget, "settling": bool(st), "settle_ask": settle_ask,
         "dial": dl,
         "timeline": tl,
         "totals": totals, "feed": feed,

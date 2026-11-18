@@ -16,6 +16,7 @@ AGE_BY_ID = {a["id"]: a for a in AGES}
 DEFAULT_WAKE = 7 * 60
 SHORT_NAP = 45      # en dessous, l'éveil suivant est raccourci
 CUT = 12            # de combien
+BED_STRETCH = 1.5    # dernier éveil allongé au plus de tant quand le coucher tomberait avant sa plage
 FEED_INTERVAL = 180  # écart habituel entre deux biberons (3 h : lever 7 h, coucher 19 h, 5 biberons)
 # Repère de lait sur une journée, jusqu'à 6 mois : autour de 150 ml par kilo (130 à 170 ici),
 # sans dépasser environ un litre. Un ordre de grandeur, jamais une quantité à atteindre.
@@ -166,7 +167,9 @@ def plan(day: Day, age: dict, hab: dict | None = None) -> list[dict]:
     wl = age["wl"] - (CUT if short else 0)
     bed = t + wl
     if bed < age["bed_min"]:
-        bed = min(age["bed_min"], t + wl * 1.25)
+        # Dernière sieste finie tôt, sans place pour une de plus : le soir s'allonge, jusqu'à 1,5 fois
+        # son éveil habituel (rejoué sur ses journées du 04 au 17/11 : plus proche de ses vrais couchers que 1,25)
+        bed = min(age["bed_min"], t + wl * BED_STRETCH)
     if day.bed is not None:
         bed = day.bed
     items.append({"type": "gap", "len": bed - t, "cut": day.bed is None and short and bed == t + wl})

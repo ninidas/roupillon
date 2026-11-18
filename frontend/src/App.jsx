@@ -112,15 +112,15 @@ export default function App() {
     setSheet(<NapOverSheet nap={nap} feed={f} onClose={close} onDone={(msg) => { close(); refresh(); setVersion(v => v + 1); notify(msg) }} />)
   }
 
-  async function onAct(a) {
+  async function onAct(a, extra = {}) {
     setBusy(true)
     try {
-      const r = await act(a)
+      const r = await act(a, extra)
       if (r.offline) { setOnline(false); setQueued(pending()); notify(r.message); return }
       setToday(r.today); setOnline(true); setVersion(v => v + 1); setDoneAt(Date.now())
       const acts = r.undo ? [{ label: 'Annuler', cls: 'undo', run: () => undo(r.undo) }] : []
       // Le biberon et le lever ont leur fiche pour l'heure ; les autres gestes, des raccourcis dans le bandeau
-      if (r.at && a !== 'feed' && a !== 'wake') [5, 10, 15].forEach(n => acts.push({ label: `${n} min`, early: true, run: () => shift(r, n) }))
+      if (r.at && a !== 'feed' && a !== 'wake' && !extra.at) [5, 10, 15].forEach(n => acts.push({ label: `${n} min`, early: true, run: () => shift(r, n) }))
       notify(r.message, acts)
       if (a === 'feed') {
         const after = (msg) => { close(); if (msg) notify(msg); askNapOver(r.event_id) }
