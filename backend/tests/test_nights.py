@@ -33,7 +33,9 @@ def test_semaine_vide_puis_nuits_choisies(client, auth, ids, later):
     # Samedi 24 octobre : la semaine du lundi 19, nuits passées jusqu'à vendredi
     assert w["start"] == "2026-10-19" and w["label"] == "Du 19 au 25 octobre" and w["tonight"] == "2026-10-24"
     assert [n["label"] for n in w["nights"]][:2] == ["Lundi 19", "Mardi 20"] and w["empty"] == 2
+    assert w["started"] is False and w["child"] == "Bébé"
     w = client.put("/api/nights/2026-10-24", json={"user_id": b}, headers=auth).json()
+    assert w["started"] is True
     sat = w["nights"][5]
     assert sat["user_id"] == b and sat["source"] == "set" and sat["tonight"] and w["counts"][str(b)] == 1 and w["empty"] == 1
     assert later == [(b, {"title": "Nuits : nuit de samedi", "body": "Parent A vous a donné la nuit de samedi.", "tag": "duty-2026-10-24"})]

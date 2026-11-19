@@ -450,3 +450,18 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--indigo);outline
 .tonight-b{display:flex;gap:8px}
 .tonight-b button{flex:1;min-height:46px;border:0;border-radius:14px;background:var(--fill);color:var(--label);font:inherit;font-size:16px;font-weight:600;
   display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+
+.night-intro{background:var(--card);border-radius:22px;padding:20px 18px;display:flex;flex-direction:column;gap:10px}
+.night-intro.in-sheet{background:none;padding:0 2px}
+.night-intro-i{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--nap-tint);color:var(--indigo)}
+.night-intro-i svg{width:24px;height:24px}
+.night-intro h2{font-size:22px;font-weight:800;margin:4px 0 0}
+.night-intro p{margin:0;font-size:15px;line-height:1.45;color:var(--label2);text-wrap:pretty}
+.night-intro ul{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:12px}
+.night-intro li{display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.4}
+.night-intro li{color:var(--label2)}
+.night-intro li b{font-weight:600;color:var(--label)}
+.night-intro .dot{flex:none;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:var(--fill);color:var(--indigo)}
+.night-intro .dot svg{width:15px;height:15px}
+.night-intro-s{font-size:14px !important;color:var(--indigo) !important;font-weight:600}
+.link.about{align-self:center;font-size:15px;padding:6px 8px}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import Sheet from '../components/Sheet'
-import { Check, Chevron } from '../components/Icons'
+import { Bell, Check, Chevron, Moon } from '../components/Icons'
 
 const INI = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 const DAY_NAMES = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
@@ -51,6 +51,8 @@ export default function Nights({ open, close, notify, status, refresh }) {
     <div className="wrap">
       <header className="top"><h1 className="rd">Nuits</h1><div className="top-sub">Qui se lève</div>{status}</header>
 
+      {!w.started && <Intro child={w.child} />}
+
       <div className="seg full" role="group" aria-label="Semaine">
         <button type="button" aria-pressed={w.start === w.this_week} onClick={() => setStart(null)}>Cette semaine</button>
         <button type="button" aria-pressed={w.start === next} onClick={() => setStart(next)}>Semaine prochaine</button>
@@ -83,7 +85,26 @@ export default function Nights({ open, close, notify, status, refresh }) {
 
       <button type="button" className="secondary blue" disabled={busy} onClick={copyLast}>Reprendre la semaine dernière</button>
       <p className="foot">Une nuit va du soir au lendemain matin. Touchez une nuit pour choisir qui se lève ; l'autre parent est prévenu.</p>
+      {w.started && <button type="button" className="link about" onClick={() => open(
+        <Sheet title="L'onglet Nuits" onClose={close}><Intro child={w.child} sheet /></Sheet>)}>À quoi sert cet onglet ?</button>}
     </div>
+  )
+}
+
+// Présentation de l'onglet : en tête tant que rien n'est prévu, puis par le lien du bas
+function Intro({ child, sheet }) {
+  return (
+    <section className={`night-intro${sheet ? ' in-sheet' : ''}`}>
+      <span className="night-intro-i"><Moon /></span>
+      <h2 className="rd">Qui se lève cette nuit ?</h2>
+      <p>Décidez à l'avance lequel de vous deux se lève si {child} se réveille la nuit, pour une tétine, un câlin ou un biberon. Plus besoin d'en discuter à 3 h du matin.</p>
+      <ul>
+        <li><span className="dot"><Check /></span><span><b>Touchez une nuit</b> pour choisir qui se lève. L'autre parent reçoit une notification.</span></li>
+        <li><span className="dot"><Bell /></span><span><b>Le soir</b>, l'écran Aujourd'hui affiche qui est de nuit, et ce parent reçoit un rappel au coucher.</span></li>
+        <li><span className="dot"><Moon /></span><span><b>Une fois votre rythme trouvé</b>, choisissez un rythme par défaut : les semaines se remplissent seules, et chaque nuit reste modifiable.</span></li>
+      </ul>
+      {!sheet && <p className="night-intro-s">Commencez par la nuit de ce soir, dans la liste ci-dessous.</p>}
+    </section>
   )
 }
 

@@ -136,6 +136,9 @@ def week(db: Session, start: date, me: models.User, tonight: date) -> dict:
         "nights": nights, "counts": counts,
         "empty": sum(1 for n in nights if n["user_id"] is None and not n["past"]),
         "rhythm": r,
+        # Rien encore jamais prévu : l'onglet se présente aux nouveaux venus
+        "started": r["mode"] != "none" or db.query(models.NightDuty).first() is not None,
+        "child": S.settings(db)["child_name"],
     }
 
 
