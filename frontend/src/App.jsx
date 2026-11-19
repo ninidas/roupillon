@@ -38,7 +38,7 @@ export default function App() {
   const setTheme = (v) => { setThemeState(v); ls.set('rp_theme', v) }
   // La nuit, basculer le cadran sur le soleil rend aussi le thème de jour (le mode tamisé ne sert qu'au cadran de nuit)
   const [dayFace, setDayFace] = useState(false)
-  const setTab = (t) => { setTabState(t); ls.set('rp_tab', t); window.scrollTo(0, 0) }
+  const setTab = (t) => { setTabState(t); ls.set('rp_tab', t); document.getElementById('root')?.scrollTo(0, 0) }
   const close = useCallback(() => setSheet(null), [])
   const notify = useCallback((msg, actions = []) => {
     clearTimeout(toastTimer.current)

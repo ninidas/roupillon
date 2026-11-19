@@ -44,7 +44,10 @@ body{color:var(--label);font-family:var(--font);font-size:17px;line-height:1.35;
   overscroll-behavior-y:none;-webkit-user-select:none;user-select:none}
 input{-webkit-user-select:text;user-select:text}
 button{font:inherit;color:inherit}
-#root{min-height:100dvh}
+/* La page ne défile pas, c'est #root qui défile : sur iPhone (iOS 26, app sur l'écran d'accueil), quand la page
+   elle-même défile, Safari décolle du bas la barre d'onglets et le bandeau (positionnés en fixed). */
+html,body{height:100%;overflow:hidden}
+#root{position:fixed;inset:0;overflow-y:auto;overscroll-behavior-y:none;-webkit-overflow-scrolling:touch}
 .rd{font-family:var(--round)}
 
 .wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:20px;

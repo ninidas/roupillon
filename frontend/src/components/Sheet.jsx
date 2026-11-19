@@ -3,11 +3,13 @@ import { useEffect, useState } from 'react'
 // Feuille qui monte du bas, comme sur iOS. Fermeture : bouton, fond grisé ou glissement vers le bas.
 export default function Sheet({ title, onClose, action, children }) {
   useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    // Le contenu défile dans #root (voir styles.css) : c'est lui qu'on fige sous la feuille
+    const root = document.getElementById('root')
+    const prev = root.style.overflow
+    root.style.overflow = 'hidden'
     const esc = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', esc)
-    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', esc) }
+    return () => { root.style.overflow = prev; window.removeEventListener('keydown', esc) }
   }, [onClose])
 
   let y0 = null
