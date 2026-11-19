@@ -3,6 +3,7 @@ import Dial, { NightDial } from '../components/Dial'
 import EventSheet, { ConfirmSheet, ML, SettleAskSheet } from '../components/EventSheet'
 import { Bed, Bottle, Check, Chevron, Eye, Moon, Pencil, Plus, Sun } from '../components/Icons'
 import { DaySheet } from './Journal'
+import { NightSheet, Who } from './Nights'
 import { api } from '../api'
 
 const ACT_ICON = { nap_lay: Bed, asleep: Moon, nap_start: Moon, nap_end: Sun, wake: Sun, bed: Bed, night_start: Eye, night_end: Moon }
@@ -136,6 +137,8 @@ function CurrentDay({ t, night, onAct, open, close, busy, doneAt, edit, editOn, 
         </section>
       )}
 
+      {t.tonight && <Tonight n={t.tonight} open={open} close={close} refresh={refresh} notify={notify} />}
+
       {/* La clé change avec les boutons proposés : le nouvel état arrive en fondu */}
       <div className="actions" key={t.actions.map(a => a.act).join()}>
         {t.actions.map((a, i) => {
@@ -211,6 +214,47 @@ function CurrentDay({ t, night, onAct, open, close, busy, doneAt, edit, editOn, 
         </section>
       )}
     </>
+  )
+}
+
+// Qui se lève cette nuit : le soir à partir de 16 h et toute la nuit. Personne de prévu : on choisit d'ici.
+function Tonight({ n, open, close, refresh, notify }) {
+  const other = n.users.find(u => u.id !== n.user_id)
+  const sheet = () => open(<NightSheet date={n.date} onClose={close} notify={notify}
+    onDone={(_, msg) => { close(); refresh(); notify(msg) }} />)
+  async function set(uid) {
+    try {
+      await api(`/nights/${n.date}`, { method: 'PUT', body: { user_id: uid } })
+      refresh(); notify(uid === n.me_id ? "Cette nuit, c'est vous" : `Cette nuit : ${n.users.find(u => u.id === uid)?.name}`)
+    } catch (e) { notify(e.message) }
+  }
+  if (!n.user_id) {
+    return (
+      <section className="tonight empty-night" aria-label="Cette nuit">
+        <div className="tonight-r">
+          <span className="who none q" aria-hidden="true">?</span>
+          <span className="grow"><span className="tonight-c">Cette nuit</span><span className="tonight-t">Personne n'est prévu</span></span>
+        </div>
+        <div className="tonight-b">
+          {n.users.map(u => (
+            <button key={u.id} type="button" onClick={() => set(u.id)}>
+              <Who users={n.users} id={u.id} small />{u.id === n.me_id ? 'Moi' : u.name}
+            </button>
+          ))}
+        </div>
+      </section>
+    )
+  }
+  return (
+    <button type="button" className="tonight" onClick={sheet} aria-label={`Cette nuit, ${n.me ? 'vous vous levez' : `${n.name} se lève`}. Toucher pour échanger`}>
+      <Who users={n.users} id={n.user_id} />
+      <span className="grow">
+        <span className="tonight-c">Cette nuit</span>
+        <span className="tonight-t">{n.me ? "C'est vous qui vous levez" : `${n.name} se lève`}</span>
+        <span className="tonight-s">{n.me ? (other ? `${other.name} dort` : 'Bonne nuit') : 'Vous dormez tranquille'}</span>
+      </span>
+      <Chevron />
+    </button>
   )
 }
 

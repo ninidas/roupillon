@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from . import actions as A
 from . import engine as E
 from . import models
+from . import nights as N
 from . import push as P
 from . import service as S
 from .auth import (burn_password_check, create_token, current_user, hash_password, key_hash, new_widget_key,
@@ -136,7 +137,11 @@ def drop_widget_key(user: models.User = Depends(current_user), db: Session = Dep
 
 @router.get("/today")
 def today(user: models.User = Depends(current_user), db: Session = Depends(get_db)):
-    return S.today_view(db)
+    now = S.now_local()
+    v = S.today_view(db, now)
+    # Seule partie propre à chacun : « C'est vous qui vous levez » ou « (l'autre parent) se lève »
+    v["tonight"] = N.tonight(db, v, user, now)
+    return v
 
 
 class ActionBody(BaseModel):
@@ -466,6 +471,10 @@ class PushPrefs(BaseModel):
     nap: bool | None = None
     feed: bool | None = None
     bed: bool | None = None
+    duty_eve: bool | None = None
+    duty_change: bool | None = None
+    duty_empty: bool | None = None
+    duty_week: bool | None = None
     lead: Literal[5, 10, 15, 20, 30] | None = None
 
 
@@ -519,6 +528,91 @@ def push_test(request: Request, user: models.User = Depends(current_user), db: S
     if not n:
         raise HTTPException(status_code=502, detail="Aucun téléphone n'a reçu l'essai, réactivez les notifications")
     return {"sent": n}
+
+
+# ---------- qui se lève la nuit ----------
+
+class NightSet(BaseModel):
+    user_id: int | None
+
+
+class NightCopy(BaseModel):
+    start: date
+
+
+class RhythmBody(BaseModel):
+    mode: Literal["none", "alternate", "weekdays"]
+    weekdays: Annotated[list[int | None], Field(min_length=7, max_length=7)] | None = None
+    anchor: date | None = None
+    first: int | None = None
+    second: int | None = None
+
+
+def tonight_now(db: Session) -> date:
+    return N.tonight_date(S.today_view(db))
+
+
+def check_night(db: Session, d: date, tonight: date) -> None:
+    # Les nuits des deux dernières semaines se corrigent encore ; au-delà d'un an, c'est une erreur de saisie
+    if not (tonight - timedelta(days=14) <= d <= tonight + timedelta(days=366)):
+        raise HTTPException(status_code=422, detail="Date hors du planning")
+
+
+def check_parent(db: Session, uid: int | None, empty_ok: bool = True) -> None:
+    if uid is None and empty_ok:
+        return
+    if uid is None or db.get(models.User, uid) is None:
+        raise HTTPException(status_code=422, detail="Parent inconnu")
+
+
+@router.get("/nights")
+def get_nights(start: date | None = None, user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    tonight = tonight_now(db)
+    return N.week(db, start or tonight, user, tonight)
+
+
+@router.post("/nights/copy")
+def copy_nights(body: NightCopy, user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    tonight = tonight_now(db)
+    start = N.monday(body.start)
+    check_night(db, start + timedelta(days=6), tonight)
+    if not N.copy_last(db, start, user):
+        raise HTTPException(status_code=422, detail="La semaine dernière n'avait aucune nuit attribuée")
+    db.commit()
+    P.send_later(N.week_notices(db, start, user, f"a prévu les nuits de la semaine du {start.day} {S.MONTHS[start.month - 1]}."))
+    return N.week(db, start, user, tonight)
+
+
+@router.put("/nights/rhythm")
+def put_rhythm(body: RhythmBody, start: date | None = None, user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    tonight = tonight_now(db)
+    if body.mode == "weekdays":
+        if body.weekdays is None:
+            raise HTTPException(status_code=422, detail="Choisissez un parent pour chaque jour")
+        for uid in body.weekdays:
+            check_parent(db, uid)
+    if body.mode == "alternate":
+        if body.anchor is None or body.first is None or body.second is None or body.first == body.second:
+            raise HTTPException(status_code=422, detail="Choisissez les deux parents qui alternent")
+        check_parent(db, body.first, False)
+        check_parent(db, body.second, False)
+    value = body.model_dump(mode="json")
+    N.set_rhythm(db, value, tonight)
+    db.commit()
+    what = "a retiré le rythme par défaut des nuits." if body.mode == "none" else "a choisi un rythme par défaut pour les nuits."
+    P.send_later(N.week_notices(db, N.monday(tonight), user, what))
+    return N.week(db, start or tonight, user, tonight)
+
+
+@router.put("/nights/{d}")
+def put_night(d: date, body: NightSet, user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    tonight = tonight_now(db)
+    check_night(db, d, tonight)
+    check_parent(db, body.user_id)
+    old, new = N.set_night(db, d, body.user_id, user)
+    db.commit()
+    P.send_later(N.change_notices(db, d, old, new, user))
+    return N.week(db, d, user, tonight)
 
 
 # ---------- widget Scriptable et Raccourcis iPhone ----------

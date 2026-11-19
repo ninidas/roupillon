@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { act, api, ApiError, cachedToday, flushQueue, getToken, loadToday, ls, Offline, pending, setToken, setUnauthorizedHandler } from './api'
 import { AsleepSheet, FeedAmountSheet, NapOverSheet, WakeTimeSheet, shiftStamp } from './components/EventSheet'
-import { TabJournal, TabSettings, TabToday } from './components/Icons'
+import { TabJournal, TabNights, TabSettings, TabToday } from './components/Icons'
 import Journal from './pages/Journal'
+import Nights from './pages/Nights'
 import { Login, Setup } from './pages/Login'
 import Settings from './pages/Settings'
 import Today from './pages/Today'
 
 const TABS = [
   { id: 'today', label: "Aujourd'hui", Icon: TabToday },
+  { id: 'nights', label: 'Nuits', Icon: TabNights },
   { id: 'journal', label: 'Journal', Icon: TabJournal },
   { id: 'settings', label: 'Réglages', Icon: TabSettings },
 ]
@@ -17,7 +19,11 @@ export default function App() {
   const [phase, setPhase] = useState('boot')
   const [me, setMeState] = useState(ls.get('rp_me'))
   const [today, setToday] = useState(cachedToday())
-  const [tab, setTabState] = useState(ls.get('rp_tab', 'today'))
+  // Une notification des nuits ouvre l'app sur l'onglet Nuits (/?tab=nights)
+  const [tab, setTabState] = useState(() => {
+    const asked = new URLSearchParams(location.search).get('tab')
+    return TABS.some(x => x.id === asked) ? asked : ls.get('rp_tab', 'today')
+  })
   const [sheet, setSheet] = useState(null)
   const [toast, setToast] = useState(null)
   const [online, setOnline] = useState(true)
@@ -61,6 +67,15 @@ export default function App() {
       if (e instanceof Offline && ls.get('rp_me')) { setOnline(false); setPhase('app') }
     })
   }, [])
+
+  // App déjà ouverte quand on touche une notification des nuits : le service worker demande l'onglet
+  useEffect(() => {
+    if (location.search) history.replaceState(null, '', location.pathname)
+    if (!('serviceWorker' in navigator)) return
+    const onMsg = (e) => { if (TABS.some(x => x.id === e.data?.open)) setTab(e.data.open) }
+    navigator.serviceWorker.addEventListener('message', onMsg)
+    return () => navigator.serviceWorker.removeEventListener('message', onMsg)
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mise à jour chaque demi-minute, et dès que l'app revient au premier plan
   useEffect(() => {
@@ -159,6 +174,7 @@ export default function App() {
       {tab === 'today' && (today
         ? <Today today={today} onAct={onAct} busy={busy} doneAt={doneAt} version={version} onDayFace={setDayFace} {...common} />
         : <div className="wrap"><div className="empty">Chargement...</div></div>)}
+      {tab === 'nights' && <Nights {...common} />}
       {tab === 'journal' && <Journal version={version} {...common} />}
       {tab === 'settings' && me && <Settings me={me} setMe={setMe} onLogout={logout} theme={theme} setTheme={setTheme} {...common} />}
 

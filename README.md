@@ -44,6 +44,7 @@ Roupillon is a small mobile web app for two parents. One tap logs when the baby 
 #### Built for two
 - **One account per parent** - each sees the other's entries as soon as they open the app
 - **iPhone** - lock-screen widget (through the Scriptable app) and Siri shortcuts to log without opening the app
+- **Who gets up tonight** - one parent per night, planned week by week or with a default rhythm (every other night or set weekdays), with phone reminders
 
 #### App & security
 - **PWA** - installable on the phone's home screen
@@ -151,6 +152,7 @@ Roupillon est une petite appli web pour téléphone, pensée pour deux parents. 
 #### À deux
 - **Un compte par parent** : chacun voit ce que l'autre a noté dès qu'il ouvre l'appli
 - **iPhone** : widget d'écran verrouillé (avec l'app Scriptable) et raccourcis Siri pour noter sans ouvrir l'appli
+- **Qui se lève cette nuit** : un parent par nuit, prévu semaine par semaine ou selon un rythme par défaut (un soir sur deux ou jours attitrés), avec des rappels sur le téléphone
 
 #### Appli et sécurité
 - **PWA** : s'installe sur l'écran d'accueil du téléphone

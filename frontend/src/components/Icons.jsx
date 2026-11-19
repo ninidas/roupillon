@@ -41,6 +41,11 @@ export const TabToday = () => (
     <path d="M7.6 21.4A9.5 9.5 0 1 1 20.4 21.4" /><path d="M14 14l4.5-4" /><circle cx="14" cy="14" r="1.6" fill="currentColor" />
   </svg>
 )
+export const TabNights = () => (
+  <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" aria-hidden="true">
+    <path d="M22.5 16.8A9 9 0 1 1 11.2 5.5a7.2 7.2 0 0 0 11.3 11.3z" />
+  </svg>
+)
 export const TabJournal = () => (
   <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
     <rect x="5" y="4.5" width="18" height="19" rx="4" /><path d="M10 10h8M10 14h8M10 18h5" />

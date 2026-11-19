@@ -17,6 +17,12 @@ const KINDS = [
   { id: 'feed', label: 'Prochain biberon' },
   { id: 'bed', label: 'Coucher' },
 ]
+const NIGHT_KINDS = [
+  { id: 'duty_eve', label: 'Rappel du soir', sub: 'Quand vous vous levez cette nuit : au coucher, ou à 20 h' },
+  { id: 'duty_change', label: 'Nuit changée', sub: "Quand l'autre parent change une de vos nuits" },
+  { id: 'duty_empty', label: 'Nuit sans parent', sub: 'À 18 h, si personne n’est prévu ce soir' },
+  { id: 'duty_week', label: 'Semaine à planifier', sub: 'Le dimanche à 19 h, s’il reste des nuits vides' },
+]
 
 export default function Notifications({ notify }) {
   const [p, setP] = useState(null)       // réglages et clé, côté serveur
@@ -91,7 +97,7 @@ export default function Notifications({ notify }) {
           <button type="button" className="cell ic" onClick={enable} disabled={busy || !p}>
             <span className="icon i-bell"><Bell /></span>
             <span className="grow"><span className="ttl">Activer sur ce téléphone</span>
-              <span className="sub2" style={{ display: 'block' }}>Un rappel avant la sieste et le biberon</span></span>
+              <span className="sub2" style={{ display: 'block' }}>Rappels des siestes, des biberons et des nuits</span></span>
             <Chevron />
           </button>
         )}
@@ -117,6 +123,22 @@ export default function Notifications({ notify }) {
         {sub && <div className="cell"><Confirm className="link danger" label="Couper sur ce téléphone" confirm="Toucher encore pour couper" onConfirm={disable} /></div>}
       </div>
       <p className="foot">Réglages de votre compte, sur tous vos appareils. Rien la nuit ni pendant une sieste ; les siestes sont annoncées une fois le lever noté. Les heures restent des estimations.</p>
+      {p && (
+        <>
+          <h2 className="section-h" style={{ marginTop: 20 }}>Notifications des nuits</h2>
+          <div className="group">
+            {NIGHT_KINDS.map(k => (
+              <div className="cell" key={k.id}>
+                <span className="grow"><span className="ttl">{k.label}</span><span className="sub2" style={{ display: 'block' }}>{k.sub}</span></span>
+                <div className="seg" role="group" aria-label={k.label}>
+                  <button type="button" aria-pressed={p.prefs[k.id]} onClick={() => put({ [k.id]: true })}>Oui</button>
+                  <button type="button" aria-pressed={!p.prefs[k.id]} onClick={() => put({ [k.id]: false })}>Non</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </section>
   )
 }

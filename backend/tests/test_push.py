@@ -35,13 +35,13 @@ def run_until(clock, end, sent_keys):
 
 def test_abonnement_et_reglages(client, auth):
     r = client.get("/api/push", headers=auth).json()
-    assert r["prefs"] == {"nap": True, "feed": True, "bed": False, "lead": 15} and r["devices"] == 0 and len(r["key"]) > 80
+    assert r["prefs"] == {"nap": True, "feed": True, "bed": False, "lead": 15, "duty_eve": True, "duty_change": True, "duty_empty": True, "duty_week": True} and r["devices"] == 0 and len(r["key"]) > 80
     bad = client.post("/api/push/subscribe", json={"endpoint": "https://exemple.invalid/x", "keys": KEYS}, headers=auth)
     assert bad.status_code == 422
     r = client.post("/api/push/subscribe", json={"endpoint": APPLE, "keys": KEYS}, headers=auth)
     assert r.status_code == 200 and r.json()["devices"] == 1
     r = client.put("/api/push/prefs", json={"feed": False, "lead": 10}, headers=auth).json()
-    assert r["prefs"] == {"nap": True, "feed": False, "bed": False, "lead": 10}
+    assert {k: r["prefs"][k] for k in ("nap", "feed", "bed", "lead")} == {"nap": True, "feed": False, "bed": False, "lead": 10}
     assert client.put("/api/push/prefs", json={"lead": 7}, headers=auth).status_code == 422
     r = client.post("/api/push/unsubscribe", json={"endpoint": APPLE}, headers=auth).json()
     assert r["devices"] == 0

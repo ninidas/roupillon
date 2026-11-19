@@ -84,3 +84,13 @@ class PushSent(Base):
     __tablename__ = "push_sent"
     key = Column(String, primary_key=True)
     at = Column(DateTime, nullable=False)
+
+
+class NightDuty(Base):
+    """Parent qui se lève une nuit donnée, choisi à la main. day : date du soir (AAAA-MM-JJ).
+    user_id vide : « personne » choisi exprès, qui l'emporte sur le rythme par défaut."""
+    __tablename__ = "night_duties"
+    day = Column(String, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    set_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

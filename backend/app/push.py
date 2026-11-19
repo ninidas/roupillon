@@ -1,4 +1,5 @@
-"""Notifications sur le téléphone : prochaine sieste, prochain biberon, coucher.
+"""Notifications sur le téléphone : prochaine sieste, prochain biberon, coucher, et les nuits
+(rappel du soir au parent qui se lève, nuit sans parent, semaine à planifier, nuit changée par l'autre).
 Le serveur regarde chaque minute la journée telle que l'app l'affiche et prévient chaque parent
 abonné quelques minutes avant, une seule fois par événement. Rien la nuit ni pendant une sieste.
 Sur iPhone, il faut ouvrir l'app depuis l'écran d'accueil (iOS 16.4 ou plus) pour s'abonner."""
@@ -14,13 +15,15 @@ from sqlalchemy.orm import Session
 
 from . import engine as E
 from . import models
+from . import nights as N
 from . import service as S
 from .database import SessionLocal
 
 CHECK_EVERY = 60     # secondes
 LATE = 5             # minutes : passé l'heure prévue de plus que ça, on ne prévient plus
 LEADS = (5, 10, 15, 20, 30)
-DEFAULTS = {"nap": True, "feed": True, "bed": False, "lead": 15}
+DEFAULTS = {"nap": True, "feed": True, "bed": False, "lead": 15,
+            "duty_eve": True, "duty_change": True, "duty_empty": True, "duty_week": True}
 # Le serveur n'envoie qu'aux services de notification des navigateurs, jamais à une adresse quelconque
 PUSH_HOSTS = ("push.apple.com", "fcm.googleapis.com", "push.services.mozilla.com", "notify.windows.com")
 
@@ -156,6 +159,7 @@ def tick(db: Session, now: datetime | None = None) -> list[str]:
         return []
     now = now or S.now_local()
     view = S.today_view(db, now)
+    duties = N.due(db, view, now)
     sent = []
     for uid in sorted(users):
         p = prefs(db, uid)
@@ -169,9 +173,37 @@ def tick(db: Session, now: datetime | None = None) -> list[str]:
             db.commit()
             send_user(db, uid, {"title": ev["title"], "body": ev["body"], "tag": ev["kind"]})
             sent.append(key)
+        for target, ev in duties:
+            if target not in (None, uid) or not p[ev["kind"]]:
+                continue
+            key = f"{ev['key']}|{uid}"
+            if db.get(models.PushSent, key):
+                continue
+            db.add(models.PushSent(key=key, at=now))
+            db.commit()
+            send_user(db, uid, {"title": ev["title"], "body": ev["body"], "tag": ev["kind"], "url": "/?tab=nights"})
+            sent.append(key)
     db.query(models.PushSent).filter(models.PushSent.at < now - timedelta(days=3)).delete()
     db.commit()
     return sent
+
+
+def send_later(notices: list[tuple[int, dict]]) -> None:
+    """Prévient tout de suite, sans faire attendre la réponse : une nuit changée par l'autre parent."""
+    if not notices:
+        return
+
+    def run():
+        db = SessionLocal()
+        try:
+            for uid, payload in notices:
+                if prefs(db, uid)["duty_change"]:
+                    send_user(db, uid, payload | {"url": "/?tab=nights"})
+        except Exception as e:
+            print(f"Notifications : {e}", flush=True)
+        finally:
+            db.close()
+    threading.Thread(target=run, name="push-now", daemon=True).start()
 
 
 def _loop():

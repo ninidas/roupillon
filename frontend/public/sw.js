@@ -27,19 +27,23 @@ self.addEventListener('fetch', (event) => {
   }
 })
 
-// Notifications envoyées par le serveur (prochaine sieste, biberon, coucher)
+// Notifications envoyées par le serveur (prochaine sieste, biberon, coucher, nuits)
 self.addEventListener('push', (event) => {
   let d = {}
   try { d = event.data ? event.data.json() : {} } catch { d = { body: event.data && event.data.text() } }
   event.waitUntil(self.registration.showNotification(d.title || 'Roupillon', {
-    body: d.body || '', tag: d.tag, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', data: { url: '/' },
+    body: d.body || '', tag: d.tag, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', data: { url: d.url && d.url.startsWith('/') ? d.url : '/' },
   }))
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    // Une notification des nuits ouvre l'onglet Nuits, même si l'app était déjà ouverte
+    const url = event.notification.data?.url || '/'
     const open = list.find(c => new URL(c.url).origin === self.location.origin)
-    return open ? open.focus() : self.clients.openWindow('/')
+    if (!open) return self.clients.openWindow(url)
+    if (url !== '/') open.postMessage({ open: new URL(url, self.location.origin).searchParams.get('tab') })
+    return open.focus()
   }))
 })
